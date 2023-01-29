@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS "symbol" (
   FOREIGN KEY("what") REFERENCES "symwhatsit"("id")
 );
 
+CREATE TABLE IF NOT EXISTS "base" (
+  "symbol_id"              INTEGER,
+  "num"                    INTEGER,
+  "type"                   TEXT,
+  "flags"                  INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY("symbol_id") REFERENCES "symbol"("id")
+);
+
 CREATE TABLE IF NOT EXISTS "parameter" (
   "id"                     INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
   "symbol_id"              INTEGER,

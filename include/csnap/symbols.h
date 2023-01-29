@@ -163,7 +163,7 @@ public:
 struct BaseClass
 {
   AccessSpecifier access_specifier = AccessSpecifier::Public;
-  std::shared_ptr<Class> base;
+  Type base;
 
   bool isPublicBase() const
   {
@@ -251,7 +251,7 @@ public:
 class Typedef : public Symbol
 {
 public:
-  csnap::Type typedef_type;
+  Type typedef_type;
 
 public:
   ~Typedef() = default;
@@ -334,11 +334,18 @@ public:
   Whatsit whatsit() const override;
 };
 
+struct FParam
+{
+  Type type;
+  std::string name;
+  Expression default_value;
+};
+
 class Function : public Symbol
 {
 public:
   Type return_type;
-  std::vector<std::unique_ptr<FunctionParameter>> parameters;
+  std::vector<FParam> parameters;
 
 public:
   ~Function() = default;
@@ -351,7 +358,7 @@ public:
   typedef FunctionParameter Parameter;
 
   virtual bool isTemplate() const;
-  virtual const std::vector<std::unique_ptr<TemplateParameter>>& templateParameters() const;
+  virtual const std::vector<TParam>& templateParameters() const;
 
   bool isInline() const;
   bool isStatic() const;
@@ -398,7 +405,14 @@ struct TemplateTypeParameter
 {
   Type default_value;
 
-  typedef csnap::Type default_value_t;
+  typedef Type default_value_t;
+};
+
+struct TParam
+{
+  std::string type;
+  std::string default_value;
+  int symbol_id = -1;
 };
 
 class TemplateParameter : public Symbol
