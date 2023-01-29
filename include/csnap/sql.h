@@ -27,6 +27,7 @@ public:
   bool step();
   void finalize();
 
+  std::string errormsg() const;
   int rowid() const;
 
   void bind(int n, std::nullptr_t);
@@ -71,6 +72,11 @@ inline void Statement::finalize()
   m_statement = nullptr;
 }
 
+inline std::string Statement::errormsg() const
+{
+  return sqlite3_errmsg(m_database);
+}
+
 inline int Statement::rowid() const
 {
   return sqlite3_last_insert_rowid(m_database);
@@ -88,7 +94,7 @@ inline void Statement::bind(int n, const char* text)
 
 inline void Statement::bind(int n, int value)
 {
-  sqlite3_bind_int(m_statement, 1, value);
+  sqlite3_bind_int(m_statement, n, value);
 }
 
 inline std::string Statement::column(int n) const

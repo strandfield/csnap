@@ -16,6 +16,7 @@ namespace csnap
 class File;
 class Include;
 class Symbol;
+struct SymbolUse;
 
 class Snapshot
 {
@@ -42,6 +43,7 @@ std::string get_snapshot_info(const Snapshot& snapshot, const std::string& key);
 void insert_file(Snapshot& snapshot, const File& file);
 void insert_includes(Snapshot& snapshot, const std::vector<Include>& includes);
 void insert_symbol(Snapshot& snapshot, const Symbol& sym);
+void insert_symbol_uses(Snapshot& snapshot, const std::vector<SymbolUse>& uses);
 
 } // namespace csnap
 

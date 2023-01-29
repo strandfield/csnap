@@ -32,6 +32,8 @@ enum class AccessSpecifier
   Private,
 };
 
+const std::string& to_string(AccessSpecifier aspec);
+
 enum class Whatsit
 {
   Class = 0,
@@ -49,7 +51,7 @@ enum class Whatsit
   Variable,
 };
 
-std::string whatsit2string(Whatsit w);
+const std::string& whatsit2string(Whatsit w);
 
 struct LocalInfo
 {
@@ -159,10 +161,19 @@ public:
   explicit Namespace(std::string name, Symbol* parent = nullptr);
 };
 
+struct TParam
+{
+  std::string type;
+  std::string name;
+  std::string default_value;
+
+  std::string toString() const;
+  static TParam fromString(std::string_view str);
+};
 
 struct BaseClass
 {
-  AccessSpecifier access_specifier = AccessSpecifier::Public;
+  AccessSpecifier access_specifier = AccessSpecifier::Invalid;
   Type base;
 
   bool isPublicBase() const
@@ -179,6 +190,9 @@ struct BaseClass
   {
     return access_specifier == AccessSpecifier::Private;
   }
+
+  std::string toString() const;
+  static BaseClass fromString(std::string_view str);
 };
 
 class Class : public Symbol
@@ -195,23 +209,23 @@ public:
   Whatsit whatsit() const override;
 
   virtual bool isTemplate() const;
-  virtual const std::vector<std::unique_ptr<TemplateParameter>>& templateParameters() const;
+  virtual const std::vector<TParam>& templateParameters() const;
 };
 
 class ClassTemplate : public Class
 {
 public:
-  std::vector<std::unique_ptr<TemplateParameter>> template_parameters;
+  std::vector<TParam> template_parameters;
 
 public:
   explicit ClassTemplate(std::string name, Symbol* parent = nullptr);
-  ClassTemplate(std::vector<std::unique_ptr<TemplateParameter>> tparams, std::string name, Symbol* parent = nullptr);
+  ClassTemplate(std::vector<TParam> tparams, std::string name, Symbol* parent = nullptr);
 
   static constexpr Whatsit ClassWhatsit = Whatsit::ClassTemplate;
   Whatsit whatsit() const override;
 
   bool isTemplate() const override;
-  const std::vector<std::unique_ptr<TemplateParameter>>& templateParameters() const override;
+  const std::vector<TParam>& templateParameters() const override;
 };
 
 
@@ -277,20 +291,6 @@ public:
   Whatsit whatsit() const override;
 };
 
-
-class VariableSpecifier
-{
-public:
-
-  enum Value
-  {
-    None = 0,
-    Inline = 1,
-    Static = 2,
-    Constexpr = 4,
-  };
-};
-
 class Variable : public Symbol
 {
 public:
@@ -306,16 +306,12 @@ public:
   Expression& defaultValue();
   const Expression& defaultValue() const;
 
-  int& specifiers();
-  int specifiers() const;
-
   bool isInline() const;
   bool isStatic() const;
   bool isConstexpr() const;
 
 public:
   Type m_type;
-  int m_flags = VariableSpecifier::None;
   Expression m_default_value;
 };
 
@@ -339,6 +335,9 @@ struct FParam
   Type type;
   std::string name;
   Expression default_value;
+
+  std::string toString() const;
+  static FParam fromString(std::string_view str);
 };
 
 class Function : public Symbol
@@ -379,17 +378,17 @@ public:
 class FunctionTemplate : public Function
 {
 public:
-  std::vector<std::unique_ptr<TemplateParameter>> template_parameters;
+  std::vector<TParam> template_parameters;
 
 public:
   explicit FunctionTemplate(std::string name, Symbol* parent = nullptr);
-  FunctionTemplate(std::vector<std::unique_ptr<TemplateParameter>> tparams, std::string name, Symbol* parent = nullptr);
+  FunctionTemplate(std::vector<TParam> tparams, std::string name, Symbol* parent = nullptr);
 
   static constexpr Whatsit ClassWhatsit = Whatsit::FunctionTemplate;
   Whatsit whatsit() const override;
 
   bool isTemplate() const override;
-  const std::vector<std::unique_ptr<TemplateParameter>>& templateParameters() const override;
+  const std::vector<TParam>& templateParameters() const override;
 };
 
 
@@ -406,13 +405,6 @@ struct TemplateTypeParameter
   Type default_value;
 
   typedef Type default_value_t;
-};
-
-struct TParam
-{
-  std::string type;
-  std::string default_value;
-  int symbol_id = -1;
 };
 
 class TemplateParameter : public Symbol

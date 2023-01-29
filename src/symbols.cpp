@@ -9,6 +9,12 @@
 namespace csnap
 {
 
+static std::string G_EMPTY_STR = "";
+
+static std::string G_STR_PUBLIC = "public";
+static std::string G_STR_PROTECTED = "protected";
+static std::string G_STR_PRIVATE = "private";
+
 static std::string W_CLASS = "class";
 static std::string W_CLASSTEMPLATE = "class-template";
 static std::string W_ENUM = "enum";
@@ -23,7 +29,22 @@ static std::string W_TYPEDEF = "typedef";
 static std::string W_TYPEALIAS = "type-alias";
 static std::string W_VARIABLE = "variable";
 
-std::string whatsit2qstring(Whatsit w)
+const std::string& to_string(AccessSpecifier aspec)
+{
+  switch (aspec)
+  {
+  case AccessSpecifier::Public:
+    return G_STR_PUBLIC;
+  case AccessSpecifier::Protected:
+    return G_STR_PROTECTED;
+  case AccessSpecifier::Private:
+    return G_STR_PRIVATE;
+  default:
+    return G_EMPTY_STR;
+  }
+}
+
+const std::string& whatsit2string(Whatsit w)
 {
 
   switch (w)
@@ -55,7 +76,7 @@ std::string whatsit2qstring(Whatsit w)
     case Whatsit::Variable:
       return W_VARIABLE;
     default:
-      return {};
+      return G_EMPTY_STR;
   }
 }
 
@@ -64,6 +85,117 @@ Whatsit Namespace::whatsit() const
   return ClassWhatsit;
 }
 
+std::string TParam::toString() const
+{
+  std::string r{};
+
+  if (!name.empty())
+    r += name + ": ";
+
+  r += type;
+
+  if (!default_value.empty())
+    r += " = " + default_value;
+
+  return r;
+}
+
+static bool is_identifier_char(char c)
+{
+  return (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    (c == '_');
+}
+
+static std::string read_param_name(std::string_view& str)
+{
+  size_t i = 0;
+
+  while (i < str.size() && is_identifier_char(str[i])) ++i;
+
+  if (i + 1 < str.size() && str[i] == ':' && str[i + 1] == ' ')
+  {
+    auto r = std::string(str.data(), str.data() + i);
+    str = str.substr(i + 2);
+    return r;
+  }
+  else
+  {
+    return {};
+  }
+}
+
+TParam TParam::fromString(std::string_view str)
+{
+  TParam r;
+
+  r.name = read_param_name(str);
+
+  size_t valindex = str.find_last_of(" = ");
+
+  if (valindex != std::string::npos)
+  {
+    r.default_value = std::string(str.substr(valindex + 3));
+    str = str.substr(0, valindex);
+  }
+
+  r.type = std::string(str);
+
+  return r;
+}
+
+std::string BaseClass::toString() const
+{
+  return to_string(access_specifier) + " " + base;
+}
+
+std::string_view read_token(std::string_view& str)
+{
+  size_t i = 0;
+
+  while (i < str.size() && str[i] == ' ') ++i;
+
+  size_t start = i;
+
+  while (i < str.size() && str[i] != ' ') ++i;
+
+  size_t end = i;
+
+  auto r = std::string_view(str.data() + start, end - start);
+  str = std::string_view(str.data() + end, str.size() - end);
+  return r;
+}
+
+static bool starts_with(const std::string_view& text, const std::string_view& str)
+{
+  return text.size() >= str.size() && std::strncmp(text.data(), str.data(), str.size()) == 0;
+}
+
+BaseClass BaseClass::fromString(std::string_view str)
+{
+  BaseClass r;
+
+  if (starts_with(str, "public "))
+  {
+    r.access_specifier = AccessSpecifier::Public;
+    str = str.substr(7);
+  }
+  else if (starts_with(str, "protected "))
+  {
+    r.access_specifier = AccessSpecifier::Protected;
+    str = str.substr(10);
+  }
+  else if (starts_with(str, "private "))
+  {
+    r.access_specifier = AccessSpecifier::Private;
+    str = str.substr(8);
+  }
+
+  r.base = std::string(str);
+
+  return r;
+}
 
 Whatsit Class::whatsit() const
 {
@@ -75,9 +207,9 @@ bool Class::isTemplate() const
   return false;
 }
 
-const std::vector<std::unique_ptr<TemplateParameter>>& Class::templateParameters() const
+const std::vector<TParam>& Class::templateParameters() const
 {
-  static const std::vector<std::unique_ptr<TemplateParameter>> static_instance = {};
+  static const std::vector<TParam> static_instance = {};
   return static_instance;
 }
 
@@ -87,7 +219,7 @@ ClassTemplate::ClassTemplate(std::string name, Symbol* parent)
 
 }
 
-ClassTemplate::ClassTemplate(std::vector<std::unique_ptr<TemplateParameter>> tparams, std::string name, Symbol* parent)
+ClassTemplate::ClassTemplate(std::vector<TParam> tparams, std::string name, Symbol* parent)
   : Class(std::move(name), parent),
   template_parameters(std::move(tparams))
 {
@@ -103,7 +235,7 @@ bool ClassTemplate::isTemplate() const
   return true;
 }
 
-const std::vector<std::unique_ptr<TemplateParameter>>& ClassTemplate::templateParameters() const
+const std::vector<TParam>& ClassTemplate::templateParameters() const
 {
   return this->template_parameters;
 }
@@ -185,29 +317,19 @@ const Expression& Variable::defaultValue() const
   return m_default_value;
 }
 
-int& Variable::specifiers()
-{
-  return m_flags;
-}
-
-int Variable::specifiers() const
-{
-  return m_flags;
-}
-
 bool Variable::isInline() const
 {
-  return specifiers() & VariableSpecifier::Inline;
+  return flags & Symbol::Inline;
 }
 
 bool Variable::isStatic() const
 {
-  return specifiers() & VariableSpecifier::Static;
+  return flags & Symbol::Static;
 }
 
 bool Variable::isConstexpr() const
 {
-  return specifiers() & VariableSpecifier::Constexpr;
+  return flags & Symbol::Constexpr;
 }
 
 
@@ -232,6 +354,40 @@ Whatsit FunctionParameter::whatsit() const
   return ClassWhatsit;
 }
 
+std::string FParam::toString() const
+{
+  std::string r{};
+
+  if (!name.empty())
+    r += name + ": ";
+
+  r += type;
+
+  if (!default_value.empty())
+    r += " = " + default_value;
+
+  return r;
+}
+
+FParam FParam::fromString(std::string_view str)
+{
+  FParam r;
+
+  r.name = read_param_name(str);
+
+  size_t valindex = str.find_last_of(" = ");
+
+  if (valindex != std::string::npos)
+  {
+    r.default_value = std::string(str.substr(valindex + 3));
+    str = str.substr(0, valindex);
+  }
+
+  r.type = std::string(str);
+
+  return r;
+}
+
 Whatsit Function::whatsit() const
 {
   return ClassWhatsit;
@@ -242,9 +398,9 @@ bool Function::isTemplate() const
   return false;
 }
 
-const std::vector<std::unique_ptr<TemplateParameter>>& Function::templateParameters() const
+const std::vector<TParam>& Function::templateParameters() const
 {
-  static const std::vector<std::unique_ptr<TemplateParameter>> static_instance = {};
+  static const std::vector<TParam> static_instance = {};
   return static_instance;
 }
 
@@ -252,10 +408,13 @@ static void write_params(const Function& f, std::string& out)
 {
   for (const auto& p : f.parameters)
   {
-    out += p->type;
+    out += p.type;
 
-    if (!p->name.empty())
-      out += " " + p->name;
+    if (!p.name.empty())
+      out += " " + p.name;
+
+    if (!p.default_value.empty())
+      out += " = " + p.default_value;
 
     out += ", ";
   }
@@ -301,7 +460,7 @@ FunctionTemplate::FunctionTemplate(std::string name, Symbol* parent)
 
 }
 
-FunctionTemplate::FunctionTemplate(std::vector<std::unique_ptr<TemplateParameter>> tparams, std::string name, Symbol* parent)
+FunctionTemplate::FunctionTemplate(std::vector<TParam> tparams, std::string name, Symbol* parent)
   : Function(std::move(name), parent),
   template_parameters(std::move(tparams))
 {
@@ -317,11 +476,10 @@ bool FunctionTemplate::isTemplate() const
   return true;
 }
 
-const std::vector<std::unique_ptr<TemplateParameter>>& FunctionTemplate::templateParameters() const
+const std::vector<TParam>& FunctionTemplate::templateParameters() const
 {
   return this->template_parameters;
 }
-
 
 Whatsit TemplateParameter::whatsit() const
 {

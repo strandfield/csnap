@@ -5,25 +5,23 @@
 #ifndef CSNAP_DEFINITION_TABLE_H
 #define CSNAP_DEFINITION_TABLE_H
 
-#include "sema.h"
+#include "use.h"
 
 #include <vector>
 
 namespace csnap
 {
 
-class Symbol;
-
 class DefinitionTable
 {
 public:
 
-  void build(std::vector<csnap::SymbolDefinition> defs);
+  void build(std::vector<SymbolDefinition> defs);
   
-  bool hasUniqueDefinition(int symbolid, csnap::SymbolDefinition* def = nullptr) const;
+  bool hasUniqueDefinition(int symbolid, SymbolDefinition* def = nullptr) const;
 
 private:
-  std::vector<csnap::SymbolDefinition> m_definitions;
+  std::vector<SymbolDefinition> m_definitions;
   std::vector<size_t> m_table;
 };
 
