@@ -307,16 +307,6 @@ Whatsit Variable::whatsit() const
   return ClassWhatsit;
 }
 
-Expression& Variable::defaultValue()
-{
-  return m_default_value;
-}
-
-const Expression& Variable::defaultValue() const
-{
-  return m_default_value;
-}
-
 bool Variable::isInline() const
 {
   return flags & Symbol::Inline;

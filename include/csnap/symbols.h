@@ -53,14 +53,6 @@ enum class Whatsit
 
 const std::string& whatsit2string(Whatsit w);
 
-struct LocalInfo
-{
-  int id = -1;
-  // @TODO: remove line & col
-  int line = -1;
-  int col = -1;
-};
-
 class Symbol
 {
 public:
@@ -100,9 +92,12 @@ public:
 
   template<typename T>
   bool is() const;
-
-  bool isLocal() const;
 };
+
+inline bool is_local(const Symbol& s)
+{
+  return s.flags & Symbol::Local;
+}
 
 inline AccessSpecifier get_access_specifier(const Symbol& s)
 {
@@ -135,19 +130,6 @@ inline void set_access_specifier(Symbol& s, AccessSpecifier a)
     s.flags |= Symbol::Private;
     break;
   }
-}
-
-template<typename T, typename U = std::shared_ptr<Symbol>>
-std::shared_ptr<T> find(const std::vector<U>& symbols, const std::string& name)
-{
-  auto it = std::find_if(symbols.begin(), symbols.end(), [&name](const std::shared_ptr<Symbol>& e) {
-    return e->is<T>() && e->name == name;
-    });
-
-  if (it != symbols.end())
-    return std::static_pointer_cast<T>(*it);
-  else
-    return nullptr;
 }
 
 class Namespace : public Symbol
@@ -280,7 +262,7 @@ public:
 class TypeAlias : public Symbol
 {
 public:
-  csnap::Type aliased_type;
+  Type aliased_type;
 
 public:
   ~TypeAlias() = default;
@@ -294,25 +276,19 @@ public:
 class Variable : public Symbol
 {
 public:
+  Type type;
+  Expression default_value;
+
+public:
   Variable(Type type, std::string name, Symbol* parent = nullptr);
   Variable(Type type, std::string name, Expression default_value, Symbol* parent = nullptr);
 
   static constexpr Whatsit ClassWhatsit = Whatsit::Variable;
   Whatsit whatsit() const override;
 
-  Type& type();
-  const Type& type() const;
-
-  Expression& defaultValue();
-  const Expression& defaultValue() const;
-
   bool isInline() const;
   bool isStatic() const;
   bool isConstexpr() const;
-
-public:
-  Type m_type;
-  Expression m_default_value;
 };
 
 
@@ -478,11 +454,6 @@ inline bool Symbol::is() const
   return test_node_kind<T>(*this);
 }
 
-inline bool Symbol::isLocal() const
-{
-  return (flags & Local);
-}
-
 inline Namespace::Namespace(std::string name, Symbol* parent)
   : Symbol{ std::move(name), parent }
 {
@@ -506,31 +477,20 @@ inline bool Enum::isScoped() const
   return (flags & Symbol::IsScoped);
 }
 
-inline Variable::Variable(Type type, std::string name, Symbol* parent)
+inline Variable::Variable(Type t, std::string name, Symbol* parent)
   : Symbol{ std::move(name), parent },
-  m_type{ type }
+    type{ t }
 {
 
 }
 
-inline Variable::Variable(Type type, std::string name, Expression default_value, Symbol* parent)
+inline Variable::Variable(Type t, std::string name, Expression default_value_, Symbol* parent)
   : Symbol{ std::move(name), parent },
-  m_type{ type },
-  m_default_value{ std::move(default_value) }
+    type{ t },
+    default_value{ std::move(default_value_) }
 {
 
 }
-
-inline Type& Variable::type()
-{
-  return m_type;
-}
-
-inline const Type& Variable::type() const
-{
-  return m_type;
-}
-
 
 inline Function::Function(std::string name, Symbol* parent)
   : Symbol{ std::move(name), parent }

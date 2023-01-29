@@ -362,8 +362,8 @@ void insert_symbol(Snapshot& snapshot, const Symbol& sym)
   {
     const auto& var = static_cast<const Variable&>(sym);
 
-    stmt.bind(6, var.type().c_str());
-    stmt.bind(7, var.defaultValue().c_str());
+    stmt.bind(6, var.type.c_str());
+    stmt.bind(7, var.default_value.c_str());
 
     stmt.step();
   }
