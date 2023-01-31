@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
   csnap::Class empty{ "Empty" };
   empty.id = 1;
 
-  csnap::insert_symbol(snap, empty);
+  csnap::write_symbol(snap, empty);
 
   csnap::SymbolDefinition def;
   def.symbol_id = empty.id;
