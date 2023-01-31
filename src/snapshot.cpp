@@ -308,9 +308,9 @@ static std::string typeField(const Class& c)
   return r;
 }
 
-void insert_symbol(Snapshot& snapshot, const Symbol& sym)
+void write_symbol(Snapshot& snapshot, const Symbol& sym)
 {
-  sql::Statement stmt{ snapshot.dbHandle(), "INSERT INTO symbol(id, what, parent, name, flags, type, value) VALUES(?,?,?,?,?,?,?)" };
+  sql::Statement stmt{ snapshot.dbHandle(), "INSERT OR REPLACE INTO symbol(id, what, parent, name, flags, type, value) VALUES(?,?,?,?,?,?,?)" };
 
   stmt.bind(1, sym.id);
   stmt.bind(2, static_cast<int>(sym.whatsit()));

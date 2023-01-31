@@ -47,6 +47,9 @@ struct SymbolUse
   int line;
   int col;
 
+  SymbolUse() = default;
+  SymbolUse(const SymbolUse&) = default;
+
   SymbolUse(const SymbolReference& ref)
     : symbol_id(ref.symbol_id),
       howused(Reference),
