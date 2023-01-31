@@ -395,8 +395,8 @@ public:
   TemplateParameter(TemplateParameter&&) = default;
   ~TemplateParameter() = default;
 
-  TemplateParameter(TemplateTypeParameter ttp);
-  TemplateParameter(TemplateNonTypeParameter tntp);
+  TemplateParameter(std::string n, TemplateTypeParameter ttp);
+  TemplateParameter(std::string n, TemplateNonTypeParameter tntp);
 
   static constexpr Whatsit ClassWhatsit = Whatsit::TemplateParameter;
   Whatsit whatsit() const override;

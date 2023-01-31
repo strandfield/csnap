@@ -476,15 +476,15 @@ Whatsit TemplateParameter::whatsit() const
   return ClassWhatsit;
 }
 
-TemplateParameter::TemplateParameter(TemplateTypeParameter ttp)
-  : Symbol(std::move(name)),
+TemplateParameter::TemplateParameter(std::string n, TemplateTypeParameter ttp)
+  : Symbol(std::move(n)),
   m_is_type_parameter(true)
 {
   std::get<TemplateTypeParameter>(m_data) = ttp;
 }
 
-TemplateParameter::TemplateParameter(TemplateNonTypeParameter tntp)
-  : Symbol(std::move(name)),
+TemplateParameter::TemplateParameter(std::string n, TemplateNonTypeParameter tntp)
+  : Symbol(std::move(n)),
   m_is_type_parameter(false)
 {
   std::get<TemplateNonTypeParameter>(m_data) = tntp;
