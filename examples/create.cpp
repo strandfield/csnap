@@ -2,12 +2,12 @@
 // This file is part of the 'csnap' project.
 // For conditions of distribution and use, see copyright notice in LICENSE.
 
-#include <csnap/snapshot.h>
+#include <csnap/database/snapshot.h>
 
-#include <csnap/file.h>
-#include <csnap/include.h>
-#include <csnap/symbols.h>
-#include <csnap/use.h>
+#include <csnap/model/file.h>
+#include <csnap/model/include.h>
+#include <csnap/model/symbols.h>
+#include <csnap/model/use.h>
 
 #include <iostream>
 

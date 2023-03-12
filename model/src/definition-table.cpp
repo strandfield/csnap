@@ -2,9 +2,9 @@
 // This file is part of the 'csnap' project.
 // For conditions of distribution and use, see copyright notice in LICENSE.
 
-#include "csnap/definition-table.h"
+#include "csnap/model/definition-table.h"
 
-#include "csnap/symbols.h"
+#include "csnap/model/symbols.h"
 
 #include <algorithm>
 #include <limits>
