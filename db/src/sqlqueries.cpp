@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS "symbolreference" (
 CREATE TABLE IF NOT EXISTS "base" (
   "symbol_id"              INTEGER NOT NULL,
   "base_id"                INTEGER NOT NULL,
+  "access_specifier"       INTEGER NOT NULL,
   FOREIGN KEY("symbol_id") REFERENCES "symbol"("id"),
   FOREIGN KEY("base_id")   REFERENCES "symbol"("id")
 
@@ -350,11 +351,11 @@ void insert_symbol_references(Database& db, const std::vector<SymbolReference>& 
   query.finalize();
 }
 
-void insert_bases(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases)
+void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases)
 {
   sql::Statement query{
    db,
-   "INSERT INTO base (symbol_id, base_id) VALUES (?,?)"
+   "INSERT INTO base (symbol_id, base_id, access_specifier) VALUES (?,?,?)"
   };
 
   for (const std::pair<const SymbolId, std::vector<BaseClass>>& pair : bases)
@@ -364,6 +365,7 @@ void insert_bases(Database& db, const std::map<SymbolId, std::vector<BaseClass>>
     for (const BaseClass& base : pair.second)
     {
       query.bind(2, base.base_id.value());
+      query.bind(3, static_cast<int>(base.access_specifier));
 
       query.step();
       query.reset();

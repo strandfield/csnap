@@ -40,8 +40,10 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
 
   snapshot.addSymbols(idxres.symbols);
   
-  // $TODO: write bases
-  (void)idxres.bases;
+  for (const std::pair<const SymbolId, std::vector<BaseClass>>& p : idxres.bases)
+  {
+    snapshot.addBases(p.first, p.second);
+  }
 
   snapshot.addSymbolReferences(idxres.references);
 

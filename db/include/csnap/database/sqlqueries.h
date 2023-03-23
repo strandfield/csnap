@@ -39,7 +39,7 @@ void insert_includes(Database& db, const std::vector<Include>& includes);
 void insert_symbol(Database& db, const Symbol& sym);
 void insert_symbol(Database& db, const std::vector<std::shared_ptr<Symbol>>& symbols);
 void insert_symbol_references(Database& db, const std::vector<SymbolReference>& references);
-void insert_bases(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases);
+void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases);
 
 } // namespace csnap
 

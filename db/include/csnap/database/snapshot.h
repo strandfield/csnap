@@ -60,6 +60,8 @@ public:
   void addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols);
   SymbolCache& symbolCache();
 
+  void addBases(SymbolId symid, const std::vector<BaseClass>& bases);
+
   void addSymbolReferences(const std::vector<SymbolReference>& list);
   std::vector<SymbolReference> listReferencesInFile(FileId file);
 

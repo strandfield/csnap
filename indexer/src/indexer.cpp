@@ -133,7 +133,10 @@ public:
       {
         std::unique_ptr<Symbol> sym = create_symbol(decl, id);
 
-        // $TODO: if symbol is a class, list the base classes
+        if (sym->kind == Whatsit::CXXClass)
+        {
+          list_bases(*sym, decl);
+        }
 
         result.symbols.push_back(std::move(sym));
       }
@@ -196,6 +199,36 @@ protected:
     // $TODO: fill extra information depending on the kind of symbol
 
     return s;
+  }
+
+  void list_bases(const Symbol& symbol, const CXIdxDeclInfo* decl)
+  {
+    const CXIdxCXXClassDeclInfo* classdecl = getCXXClassDeclInfo(decl);
+
+    if (!classdecl)
+      return;
+
+    std::vector<BaseClass> bases;
+
+    for (unsigned int i(0); i < classdecl->numBases; ++i)
+    {
+      const CXIdxBaseClassInfo* base = classdecl->bases[i];
+      
+      SymbolId symid = m_symbols.get(getClientData(base->base));
+
+      if (!symid.valid())
+      {
+        // $TODO: what?
+        continue;
+      }
+
+      BaseClass b;
+      b.base_id = symid;
+      b.access_specifier = static_cast<csnap::AccessSpecifier>(libclangAPI().cursor(base->cursor).getCXXAccessSpecifier());
+      bases.push_back(b);
+    }
+
+    result.bases[symbol.id] = std::move(bases);
   }
 };
 

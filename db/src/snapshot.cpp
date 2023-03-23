@@ -43,6 +43,11 @@ struct PendingData
    */
   std::vector<std::shared_ptr<Symbol>> symbols;
 
+  /**
+   * \brief the list of base classes that have yet to be written into the database
+   */
+  std::map<SymbolId, std::vector<BaseClass>> bases;
+
   std::vector<SymbolReference> symbol_references;
 };
 
@@ -235,6 +240,18 @@ SymbolCache& Snapshot::symbolCache()
   return m_symbol_cache;
 }
 
+/**
+ * \brief adds a list of base classes for a symbol
+ */
+void Snapshot::addBases(SymbolId symid, const std::vector<BaseClass>& bases)
+{
+  if (symid.valid())
+  {
+    std::vector<BaseClass>& list = pendingData().bases[symid];
+    list.insert(list.end(), bases.begin(), bases.end());
+  }
+}
+
 bool Snapshot::hasPendingData() const
 {
   return m_pending_data != nullptr;
@@ -270,6 +287,8 @@ void Snapshot::writePendingData()
   }
 
   insert_symbol(*m_database, m_pending_data->symbols);
+
+  insert_base(*m_database, m_pending_data->bases);
 
   insert_symbol_references(*m_database, m_pending_data->symbol_references);
 
