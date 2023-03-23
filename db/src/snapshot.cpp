@@ -106,10 +106,10 @@ File* Snapshot::addFile(File f)
   return file;
 }
 
-void Snapshot::addFile(File* f)
+void Snapshot::addFile(std::unique_ptr<File> f)
 {
-  m_files.add(f);
-  pendingData().files.push_back(FileId(f->id));
+  FileId id = m_files.add(std::move(f))->id;
+  pendingData().files.push_back(id);
 }
 
 void Snapshot::addFiles(const std::vector<File>& files)

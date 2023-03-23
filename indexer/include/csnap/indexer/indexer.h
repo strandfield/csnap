@@ -37,7 +37,7 @@ struct IndexingResult
   /**
    * \brief the list of files added to the snapshot while indexing the translation unit 
    */
-  std::vector<File*> files; // $TODO: change to unique_ptr?
+  std::vector<std::unique_ptr<File>> files;
 
   /**
    * \brief the list of files included in the translation unit
@@ -82,8 +82,7 @@ public:
 
   IndexerResultQueue& results();
 
-  // $TODO: return a pair owning / non-owning
-  std::pair<File*, bool> getOrCreateFile(std::string path);
+  std::pair<File*, std::unique_ptr<File>> getOrCreateFile(std::string path);
 
   GlobalUsrMap& sharedUsrMap();
 

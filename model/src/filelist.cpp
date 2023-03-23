@@ -18,7 +18,7 @@ File* FileList::add(std::string path)
   return m_files.back().get();
 }
 
-void FileList::add(File* f)
+File* FileList::add(std::unique_ptr<File> f)
 {
   if(!f->id.valid())
     f->id = FileId((int)m_files.size());
@@ -35,7 +35,9 @@ void FileList::add(File* f)
     m_files.resize(i + 1);
   }
 
-  m_files[i].reset(f);
+  m_files[i] = std::move(f);
+
+  return m_files[i].get();
 }
 
 std::vector<File*> FileList::all() const

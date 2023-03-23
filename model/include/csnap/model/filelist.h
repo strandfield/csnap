@@ -18,7 +18,7 @@ class FileList
 public:
 
   File* add(std::string path);
-  void add(File* f);
+  File* add(std::unique_ptr<File> f);
   std::vector<File*> all() const;
   File* get(Identifier<File> id) const;
 

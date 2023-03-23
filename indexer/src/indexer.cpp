@@ -63,26 +63,32 @@ public:
   void* enteredMainFile(const libclang::File& mainFile)
   {
     std::string path = mainFile.getFileName();
-    auto [file, created] = indexer.getOrCreateFile(path);
+    auto [rawptr, owningptr] = indexer.getOrCreateFile(path);
 
-    if (created)
-      result.files.push_back(file);
+    if (owningptr)
+    {
+      rawptr = owningptr.get();
+      result.files.push_back(std::move(owningptr));
+    }
 
-    return m_files.create(file->id);
+    return m_files.create(rawptr->id);
   }
 
   void* ppIncludedFile(const CXIdxIncludedFileInfo* inclFile)
   {
     std::string path = indexer.libclangAPI().file(inclFile->file).getFileName();
 
-    auto [file, created] = indexer.getOrCreateFile(path);
+    auto [rawptr, owningptr] = indexer.getOrCreateFile(path);
 
-    if (created)
-      result.files.push_back(file);
+    if (owningptr)
+    {
+      rawptr = owningptr.get();
+      result.files.push_back(std::move(owningptr));
+    }
 
-    result.included_files.push_back(file);
+    result.included_files.push_back(rawptr);
 
-    return m_files.create(file->id);
+    return m_files.create(rawptr->id);
   }
 
   void indexDeclaration(const CXIdxDeclInfo* decl)
@@ -252,20 +258,27 @@ IndexerResultQueue& Indexer::results()
   return m_results;
 }
 
-std::pair<File*, bool> Indexer::getOrCreateFile(std::string path)
+/**
+ * \brief returns a pointer to a File, creating it if missing
+ * 
+ * This function returns a pair of pointers, a non-owning and an owning one;
+ * only one of which is not null, depending on whether a File object was 
+ * actually created by this call.
+ */
+std::pair<File*, std::unique_ptr<File>> Indexer::getOrCreateFile(std::string path)
 {
-  // @TODO: make thread-safe
+  // $TODO: make thread-safe
 
   File* f = snapshot().findFile(path);
 
   if (f)
-    return { f, false };
+    return { f, nullptr };
 
   f = new File;
   f->path = std::move(path);
   f->id = FileId(m_file_id_generator++);
 
-  return { f, true };
+  return { nullptr, std::unique_ptr<File>(f) };
 }
 
 GlobalUsrMap& Indexer::sharedUsrMap()

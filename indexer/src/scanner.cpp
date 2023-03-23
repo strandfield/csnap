@@ -29,10 +29,12 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
 
   Snapshot& snapshot = aggregator.snapshot();
 
-  for (File* f : idxres.files)
+  for (std::unique_ptr<File>& f : idxres.files)
   {
-    snapshot.addFile(f);
+    snapshot.addFile(std::move(f));
   }
+
+  idxres.files.clear();
 
   // $TODO: write included files
   (void)idxres.included_files;

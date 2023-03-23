@@ -40,7 +40,7 @@ public:
   std::string property(const std::string& key) const;
 
   File* addFile(File f);
-  void addFile(File* f);
+  void addFile(std::unique_ptr<File> f);
   void addFiles(const std::vector<File>& files);
   File* getFile(FileId id) const;
   File* findFile(const std::string& path) const;
