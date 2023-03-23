@@ -34,6 +34,7 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file);
 void insert_file(Database& db, const File& file);
 void insert_translationunit(Database& db, const std::vector<TranslationUnit*>& units);
 void insert_translationunit_ast(Database& db, TranslationUnit* tu, const std::string& bytes);
+void insert_ppinclude(Database& db, const TranslationUnit& tu, const std::vector<Include>& includes);
 void insert_includes(Database& db, const std::vector<Include>& includes);
 void insert_symbol(Database& db, const Symbol& sym);
 void insert_symbol(Database& db, const std::vector<std::shared_ptr<Symbol>>& symbols);

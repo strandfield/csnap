@@ -36,8 +36,7 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
 
   idxres.files.clear();
 
-  // $TODO: write included files
-  (void)idxres.included_files;
+  snapshot.addIncludes(idxres.includes, idxres.source);
 
   snapshot.addSymbols(idxres.symbols);
   

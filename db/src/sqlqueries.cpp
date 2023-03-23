@@ -37,12 +37,23 @@ CREATE TABLE IF NOT EXISTS "translationunit" (
   FOREIGN KEY("file_id") REFERENCES "file"("id")
 );
 
-CREATE TABLE IF NOT EXISTS "include" (
+CREATE TABLE "ppinclude" (
+  "translationunit_id"              INTEGER NOT NULL,
+  "file_id"                         INTEGER NOT NULL,
+  "line"                            INTEGER NOT NULL,
+  "included_file_id"                INTEGER NOT NULL,
+  FOREIGN KEY("translationunit_id") REFERENCES "translationunit"("id"),
+  FOREIGN KEY("file_id")            REFERENCES "file"("id"),
+  FOREIGN KEY("included_file_id")   REFERENCES "file"("id")
+);
+
+CREATE TABLE "include" (
   "file_id"                       INTEGER NOT NULL,
   "line"                          INTEGER NOT NULL,
   "included_file_id"              INTEGER NOT NULL,
   FOREIGN KEY("file_id")          REFERENCES "file"("id"),
-  FOREIGN KEY("included_file_id") REFERENCES "file"("id")
+  FOREIGN KEY("included_file_id") REFERENCES "file"("id"),
+  UNIQUE(file_id, line)
 );
 
 CREATE TABLE IF NOT EXISTS "usr" (
@@ -224,15 +235,37 @@ void insert_translationunit_ast(Database& db, TranslationUnit* tu, const std::st
   stmt.finalize();
 }
 
-void insert_includes(Database& db, const std::vector<Include>& includes)
+void insert_ppinclude(Database& db, const TranslationUnit& tu, const std::vector<Include>& includes)
 {
-  sql::Statement stmt{ db, "INSERT INTO include (file_id, line, included_file_id) VALUES(?,?,?)" };
+  sql::Statement stmt{ db, "INSERT INTO ppinclude (translationunit_id, file_id, line, included_file_id) VALUES(?,?,?,?)" };
+  
+  stmt.bind(1, tu.id.value());
 
   for (const Include& inc : includes)
   {
-    stmt.bind(1, inc.file_id);
+    stmt.bind(2, inc.file_id.value());
+    stmt.bind(3, inc.line);
+    stmt.bind(4, inc.included_file_id.value());
+
+    stmt.step();
+    stmt.reset();
+  }
+
+  stmt.finalize();
+}
+
+void insert_includes(Database& db, const std::vector<Include>& includes)
+{
+  // We use INSERT OR IGNORE here so that duplicates are automatically ignored by sqlite.
+  // See the UNIQUE constraint in the CREATE statement of the "include" table.
+
+  sql::Statement stmt{ db, "INSERT OR IGNORE INTO include (file_id, line, included_file_id) VALUES(?,?,?)" };
+
+  for (const Include& inc : includes)
+  {
+    stmt.bind(1, inc.file_id.value());
     stmt.bind(2, inc.line);
-    stmt.bind(3, inc.included_file_id);
+    stmt.bind(3, inc.included_file_id.value());
 
     stmt.step();
     stmt.reset();

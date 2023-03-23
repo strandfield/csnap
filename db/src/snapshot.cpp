@@ -33,6 +33,11 @@ struct PendingData
   std::vector<TranslationUnit*> translation_units;
 
   /**
+   * \brief include directives that have yet to be written into the database
+   */
+  std::map<TranslationUnit*, std::vector<Include>> includes;
+
+  /**
    * \brief pointers to symbols that have yet to be written into the database
    */
   std::vector<std::shared_ptr<Symbol>> symbols;
@@ -54,7 +59,7 @@ Snapshot::Snapshot(Database db) :
   if (!m_database->good())
     throw std::runtime_error("snapshot constructor expects a good() database");
 
-  loadProgram();
+  // $TODO: load files & translation units
 }
 
 const Database& Snapshot::database() const
@@ -176,6 +181,17 @@ void Snapshot::addTranslationUnitSerializedAst(TranslationUnit* tu, const std::f
   insert_translationunit_ast(*m_database, tu, bytes);
 }
 
+/**
+ * \brief add information about includes to the snapshot
+ * \param includes the list of includes
+ * \param tu       the translation unit in which the includes were collected
+ */
+void Snapshot::addIncludes(const std::vector<Include>& includes, TranslationUnit* tu)
+{
+  std::vector<Include>& list = pendingData().includes[tu];
+  list.insert(list.end(), includes.begin(), includes.end());
+}
+
 void Snapshot::addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols)
 {
   auto& pending_list = pendingData().symbols;
@@ -224,6 +240,16 @@ void Snapshot::writePendingData()
 
   insert_translationunit(*m_database, m_pending_data->translation_units);
 
+  for (const std::pair<TranslationUnit* const, std::vector<Include>>& p : m_pending_data->includes)
+  {
+    if (p.first)
+    {
+      insert_ppinclude(*m_database, *p.first, p.second);
+    }
+
+    insert_includes(*m_database, p.second);
+  }
+
   insert_symbol(*m_database, m_pending_data->symbols);
 
   insert_symbol_references(*m_database, m_pending_data->symbol_references);
@@ -236,11 +262,6 @@ PendingData& Snapshot::pendingData()
   if (!m_pending_data)
     m_pending_data = std::make_unique<PendingData>();
   return *m_pending_data;
-}
-
-void Snapshot::loadProgram()
-{
-  // @TODO
 }
 
 } // namespace csnap

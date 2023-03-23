@@ -8,6 +8,7 @@
 #include "database.h"
 
 #include "csnap/model/filelist.h"
+#include "csnap/model/include.h"
 #include "csnap/model/translationunitlist.h"
 #include "csnap/model/reference.h"
 #include "csnap/model/symbolcache.h"
@@ -39,6 +40,8 @@ public:
   void setProperty(const std::string& key, const std::string& value);
   std::string property(const std::string& key) const;
 
+  // $TODO: static std::string getCanonicalPath(const std::string& path)
+
   File* addFile(File f);
   void addFile(std::unique_ptr<File> f);
   void addFiles(const std::vector<File>& files);
@@ -52,6 +55,8 @@ public:
   const TranslationUnitList& translationUnits() const;
   void addTranslationUnitSerializedAst(TranslationUnit* tu, const std::filesystem::path& astfile);
 
+  void addIncludes(const std::vector<Include>& includes, TranslationUnit* tu = nullptr);
+
   void addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols);
   SymbolCache& symbolCache();
 
@@ -63,7 +68,6 @@ public:
 
 protected:
   PendingData& pendingData();
-  void loadProgram();
 
 private:
   std::unique_ptr<Database> m_database;

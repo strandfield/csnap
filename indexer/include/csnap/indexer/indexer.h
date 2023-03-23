@@ -10,6 +10,7 @@
 #include "threadpool.h"
 
 #include <csnap/model/filelist.h>
+#include <csnap/model/include.h>
 #include <csnap/model/reference.h>
 #include <csnap/model/usrmap.h>
 
@@ -42,10 +43,7 @@ struct IndexingResult
   /**
    * \brief the list of files included in the translation unit
    */
-  std::vector<File*> included_files;
-
-  // $TODO: use findIncludesInFile() to list #includes for each file
-  std::map<FileId, std::vector<File*>> per_file_includes;
+  std::vector<Include> includes;
 
   /**
    * \brief the list of symbols that were first encountered while indexing the translation unit

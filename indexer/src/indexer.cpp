@@ -7,7 +7,6 @@
 #include "csnap/database/snapshot.h"
 
 #include "csnap/model/file.h"
-#include "csnap/model/include.h"
 #include "csnap/model/reference.h"
 #include "csnap/model/symbol.h"
 #include "csnap/model/usrmap.h"
@@ -54,10 +53,10 @@ public:
   IndexingResult result;
 
 public:
-  explicit TranslationUnitIndexer(csnap::Indexer& idx) : libclang::BasicIndexer(idx.libclangAPI()),
+  TranslationUnitIndexer(csnap::Indexer& idx, TranslationUnit* tu) : libclang::BasicIndexer(idx.libclangAPI()),
     indexer(idx)
   {
-
+    result.source = tu;
   }
 
   void* enteredMainFile(const libclang::File& mainFile)
@@ -76,6 +75,15 @@ public:
 
   void* ppIncludedFile(const CXIdxIncludedFileInfo* inclFile)
   {
+    // ppIncludedFile() is called for every #include in the translation unit
+    // (including nested #includes).
+    // We collect the following information here:
+    // - the id of the included file (which we may need to create if we never encountered the file);
+    // - the id of the file in which the #include is located;
+    // - the line number of the #include.
+    // The id of the included file is returned by this function so that 
+    // it can be attached to the file by libclang and later be retrieved using getClientData().
+
     std::string path = indexer.libclangAPI().file(inclFile->file).getFileName();
 
     auto [rawptr, owningptr] = indexer.getOrCreateFile(path);
@@ -86,7 +94,21 @@ public:
       result.files.push_back(std::move(owningptr));
     }
 
-    result.included_files.push_back(rawptr);
+    FileLocation loc = getFileLocation(inclFile->hashLoc);
+
+    Include inc;
+    inc.included_file_id = rawptr->id;
+    inc.line = loc.line;
+    inc.file_id = m_files.get(loc.client_data);
+
+    if (inc.file_id.valid())
+    {
+      result.includes.push_back(inc);
+    }
+    else
+    {
+      std::cerr << "oups" << std::endl;
+    }
 
     return m_files.create(rawptr->id);
   }
@@ -195,7 +217,7 @@ public:
   {
     auto start = std::chrono::high_resolution_clock::now();
 
-    TranslationUnitIndexer tui{ indexer };
+    TranslationUnitIndexer tui{ indexer, parsingResult.source };
     indexer.indexAction().indexTranslationUnit(*parsingResult.result, tui);
 
     auto end = std::chrono::high_resolution_clock::now();
