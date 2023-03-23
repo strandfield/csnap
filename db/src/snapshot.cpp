@@ -2,449 +2,245 @@
 // This file is part of the 'csnap' project.
 // For conditions of distribution and use, see copyright notice in LICENSE.
 
-#include "csnap/database/snapshot.h"
+#include "snapshot.h"
 
-#include "csnap/database/sql.h"
+#include "sql.h"
+#include "sqlqueries.h"
+#include "transaction.h"
 
-#include "csnap/model/file.h"
-#include "csnap/model/include.h"
-#include "csnap/model/symbols.h"
-#include "csnap/model/use.h"
-
-#include <cassert>
-#include <filesystem>
-#include <iostream>
+#include <fstream>
+#include <map>
+#include <sstream>
 
 namespace csnap
 {
 
-static const char* SQL_CREATE_STATEMENTS = R"(
-BEGIN TRANSACTION;
+struct PendingData
+{
+  /**
+   * \brief the properties that have yet to be written into the database 
+   */
+  std::map<std::string, std::string> properties;
 
-CREATE TABLE IF NOT EXISTS "info" (
-  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "key" TEXT NOT NULL,
-  "value" TEXT NOT NULL
-);
+  /**
+   * \brief ids of files that have yet to be written into the database
+   */
+  std::vector<FileId> files;
 
-CREATE TABLE IF NOT EXISTS "file" (
-  "id"      INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "path"    TEXT NOT NULL,
-  "content" TEXT
-);
+  /**
+   * \brief ids of translation units that have yet to be written into the database
+   */
+  std::vector<TranslationUnit*> translation_units;
 
-CREATE TABLE IF NOT EXISTS "include" (
-  "file_id"                       INTEGER NOT NULL,
-  "line"                          INTEGER NOT NULL,
-  "included_file_id"              INTEGER NOT NULL,
-  FOREIGN KEY("file_id")          REFERENCES "file"("id"),
-  FOREIGN KEY("included_file_id") REFERENCES "file"("id")
-);
+  /**
+   * \brief pointers to symbols that have yet to be written into the database
+   */
+  std::vector<std::shared_ptr<Symbol>> symbols;
 
-CREATE TABLE IF NOT EXISTS "usr" (
-  "id"   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "name" TEXT NOT NULL
-);
+  std::vector<SymbolReference> symbol_references;
+};
 
-CREATE TABLE IF NOT EXISTS "symwhatsit" (
-  "id"   INTEGER NOT NULL PRIMARY KEY UNIQUE,
-  "name" TEXT NOT NULL
-);
-
-INSERT INTO symwhatsit (id, name) VALUES(0, "class");
-INSERT INTO symwhatsit (id, name) VALUES(1, "classtemplate");
-INSERT INTO symwhatsit (id, name) VALUES(2, "enum");
-INSERT INTO symwhatsit (id, name) VALUES(3, "enumvalue");
-INSERT INTO symwhatsit (id, name) VALUES(4, "function");
-INSERT INTO symwhatsit (id, name) VALUES(5, "functiontemplate");
-INSERT INTO symwhatsit (id, name) VALUES(6, "functionparameter");
-INSERT INTO symwhatsit (id, name) VALUES(7, "macro");
-INSERT INTO symwhatsit (id, name) VALUES(8, "namespace");
-INSERT INTO symwhatsit (id, name) VALUES(9, "templateparameter");
-INSERT INTO symwhatsit (id, name) VALUES(10, "typedef");
-INSERT INTO symwhatsit (id, name) VALUES(11, "typealias");
-INSERT INTO symwhatsit (id, name) VALUES(12, "variable");
-
-CREATE TABLE IF NOT EXISTS "symbol" (
-  "id"                INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "what"              INTEGER NOT NULL,
-  "parent"            INTEGER,
-  "name"              TEXT NOT NULL,
-  "flags"             INTEGER NOT NULL DEFAULT 0,
-  "type"              TEXT,
-  "value"             TEXT,
-  FOREIGN KEY("what") REFERENCES "symwhatsit"("id")
-);
-
-CREATE TABLE IF NOT EXISTS "definition" (
-  "symbol_id"              INTEGER NOT NULL,
-  "file_id"                INTEGER NOT NULL,
-  "line"                   INTEGER,
-  "col"                    INTEGER,
-  FOREIGN KEY("symbol_id") REFERENCES "symbol"("id"),
-  FOREIGN KEY("file_id")   REFERENCES "file"("id")
-);
-
-CREATE TABLE IF NOT EXISTS "declaration" (
-  "symbol_id"              INTEGER NOT NULL,
-  "file_id"                INTEGER NOT NULL,
-  "line"                   INTEGER,
-  "col"                    INTEGER,
-  FOREIGN KEY("symbol_id") REFERENCES "symbol"("id"),
-  FOREIGN KEY("file_id")   REFERENCES "file"("id")
-);
-
-CREATE TABLE IF NOT EXISTS "symbolreference" (
-  "symbol_id"              INTEGER NOT NULL,
-  "file_id"                INTEGER NOT NULL,
-  "line"                   INTEGER,
-  "col"                    INTEGER,
-  FOREIGN KEY("symbol_id") REFERENCES "symbol"("id"),
-  FOREIGN KEY("file_id")   REFERENCES "file"("id")
-);
-
-COMMIT;
-)";
+Snapshot::Snapshot(Snapshot&&) = default;
 
 Snapshot::~Snapshot()
 {
-  if (dbHandle())
-    close();
+  if (hasPendingData())
+    writePendingData();
 }
 
-sqlite3* Snapshot::dbHandle() const
+Snapshot::Snapshot(Database db) : 
+  m_database(std::make_unique<Database>(std::move(db)))
 {
-  return m_database;
+  if (!m_database->good())
+    throw std::runtime_error("snapshot constructor expects a good() database");
+
+  loadProgram();
 }
 
-bool Snapshot::good() const
+const Database& Snapshot::database() const
 {
-  return dbHandle() != nullptr;
+  return *m_database;
 }
 
-bool Snapshot::open(const std::filesystem::path& dbPath)
+Snapshot Snapshot::open(const std::filesystem::path& p)
 {
-  int r = sqlite3_open(dbPath.u8string().c_str(), &m_database);
-  return r == SQLITE_OK;
+  Database db;
+  db.open(p);
+  return Snapshot(std::move(db));
 }
 
-void Snapshot::create(const std::filesystem::path& dbPath)
+Snapshot Snapshot::create(const std::filesystem::path& p)
 {
-  if (std::filesystem::exists(dbPath))
+  Database db;
+  db.create(p);
+  
+  if (!sql::exec(db, db_init_statements()))
+    throw std::runtime_error("failed to create snapshot database");
+
+  return Snapshot(std::move(db));
+}
+
+void Snapshot::setProperty(const std::string& key, const std::string& value)
+{
+  pendingData().properties[key] = value;
+}
+
+std::string Snapshot::property(const std::string& key) const
+{
+  if (hasPendingData())
+  {
+    auto it = m_pending_data->properties.find(key);
+    if (it != m_pending_data->properties.end())
+      return it->second;
+  }
+
+  return select_info(*m_database, key);
+}
+
+File* Snapshot::addFile(File f)
+{
+  File* file = m_files.add(std::move(f.path));
+
+  pendingData().files.push_back(FileId(file->id));
+
+  return file;
+}
+
+void Snapshot::addFile(File* f)
+{
+  m_files.add(f);
+  pendingData().files.push_back(FileId(f->id));
+}
+
+void Snapshot::addFiles(const std::vector<File>& files)
+{
+  for (File f : files)
+  {
+    addFile(std::move(f));
+  }
+}
+
+File* Snapshot::getFile(FileId id) const
+{
+  return files().get(id);
+}
+
+File* Snapshot::findFile(const std::string& path) const
+{
+  return files().find(path);
+}
+
+const FileList& Snapshot::files() const
+{
+  return m_files;
+}
+
+void Snapshot::addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts)
+{
+  auto optsptr = std::make_shared<program::CompileOptions>(opts);
+
+  for (FileId f : file_ids)
+  {
+    auto tu = std::make_unique<TranslationUnit>();
+    tu->compile_options = optsptr;
+    tu->sourcefile_id = f;
+
+    pendingData().translation_units.push_back(tu.get());
+
+    m_translationunits.add(std::move(tu));
+  }
+}
+
+TranslationUnit* Snapshot::findTranslationUnit(File* file) const
+{
+  return translationUnits().find(FileId(file->id));
+}
+
+TranslationUnit* Snapshot::getTranslationUnit(TranslationUnitId id) const
+{
+  return translationUnits().get(id);
+}
+
+const TranslationUnitList& Snapshot::translationUnits() const
+{
+  return m_translationunits;
+}
+
+void Snapshot::addTranslationUnitSerializedAst(TranslationUnit* tu, const std::filesystem::path& astfile)
+{
+  std::ifstream file{ astfile.string(), std::ios::binary };
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string bytes{ buffer.str() };
+
+  insert_translationunit_ast(*m_database, tu, bytes);
+}
+
+void Snapshot::addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols)
+{
+  auto& pending_list = pendingData().symbols;
+  pending_list.insert(pending_list.end(), symbols.begin(), symbols.end());
+
+  symbolCache().insert(symbols.begin(), symbols.end());
+}
+
+void Snapshot::addSymbolReferences(const std::vector<SymbolReference>& list)
+{
+  auto& pending_list = pendingData().symbol_references;
+  pending_list.insert(pending_list.end(), list.begin(), list.end());
+}
+
+std::vector<SymbolReference> Snapshot::listReferencesInFile(FileId file)
+{
+  return select_symbolreference(*m_database, file);
+}
+
+SymbolCache& Snapshot::symbolCache()
+{
+  return m_symbol_cache;
+}
+
+bool Snapshot::hasPendingData() const
+{
+  return m_pending_data != nullptr;
+}
+
+void Snapshot::writePendingData()
+{
+  if (!hasPendingData())
     return;
 
-  int r = sqlite3_open_v2(dbPath.u8string().c_str(), &m_database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+  sql::Transaction transaction{ *m_database };
 
-  assert(r == SQLITE_OK);
-
-  char* error = nullptr;
-  r = sqlite3_exec(dbHandle(), SQL_CREATE_STATEMENTS, NULL, NULL, &error);
-
-  assert(r == SQLITE_OK);
-
-  if (r != SQLITE_OK)
+  for (const std::pair<const std::string, std::string>& p : m_pending_data->properties)
   {
-    std::cerr << "SQLite error: " << error << std::endl;
-    sqlite3_free(error);
+    insert_info(*m_database, p.first, p.second);
   }
+
+  for (FileId f : m_pending_data->files)
+  {
+    insert_file(*m_database, *m_files.get(f));
+  }
+
+  insert_translationunit(*m_database, m_pending_data->translation_units);
+
+  insert_symbol(*m_database, m_pending_data->symbols);
+
+  insert_symbol_references(*m_database, m_pending_data->symbol_references);
+
+  m_pending_data.reset();
 }
 
-void Snapshot::close()
+PendingData& Snapshot::pendingData()
 {
-  if (!good())
-    return;
-
-  sqlite3_close(m_database);
-  m_database = nullptr;
+  if (!m_pending_data)
+    m_pending_data = std::make_unique<PendingData>();
+  return *m_pending_data;
 }
 
-void set_snapshot_info(Snapshot& snapshot, const std::string& key, const std::string& value)
+void Snapshot::loadProgram()
 {
-  sqlite3_stmt* stmt = nullptr;
-
-  sqlite3_prepare_v2(snapshot.dbHandle(),
-    "INSERT OR REPLACE INTO info (key, value) VALUES (?,?)",
-    -1, &stmt, nullptr);
-
-  sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr);
-  sqlite3_bind_text(stmt, 2, value.c_str(), -1, nullptr);
-
-  sqlite3_step(stmt);
-
-  sqlite3_finalize(stmt);
+  // @TODO
 }
-
-std::string get_snapshot_info(const Snapshot& snapshot, const std::string& key)
-{
-  sqlite3_stmt* stmt = nullptr;
-
-  sqlite3_prepare_v2(snapshot.dbHandle(),
-    "SELECT value FROM info WHERE key = ?",
-    -1, &stmt, nullptr);
-
-  sqlite3_bind_text(stmt, 1, key.c_str(), -1, nullptr);
-
-  std::string result;
-
-  if (sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    result = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-  }
-
-  sqlite3_finalize(stmt);
-
-  return result;
-}
-
-void insert_file(Snapshot& snapshot, const File& file)
-{
-  sql::Statement stmt{ snapshot.dbHandle(), "INSERT INTO file(id, path, content) VALUES(?,?,?)" };
-
-  stmt.bind(1, file.id);
-  stmt.bind(2, file.path.c_str());
-
-  if (file.content.has_value())
-    stmt.bind(3, file.content.value().c_str());
-  else
-    stmt.bind(3, nullptr);
-
-  stmt.step();
-
-  stmt.finalize();
-}
-
-void insert_includes(Snapshot& snapshot, const std::vector<Include>& includes)
-{
-  sql::Statement stmt{ snapshot.dbHandle(), "INSERT INTO include (file_id, line, included_file_id) VALUES(?,?,?)" };
-
-  for (const Include& inc : includes)
-  {
-    stmt.bind(1, inc.file_id);
-    stmt.bind(2, inc.line);
-    stmt.bind(3, inc.included_file_id);
-
-    stmt.step();
-  }
-
-  stmt.finalize();
-}
-
-static std::string join(const std::vector<FParam>& params)
-{
-  std::string r;
-
-  for (const FParam& p : params)
-  {
-    r += p.toString() + ", ";
-  }
-
-  if (!params.empty())
-  {
-    r.pop_back();
-    r.pop_back();
-  }
-
-  return r;
-}
-
-static std::string join(const std::vector<TParam>& tparams)
-{
-  std::string r;
-
-  for (const TParam& p : tparams)
-  {
-    r += p.toString() + ", ";
-  }
-
-  if (!tparams.empty())
-  {
-    r.pop_back();
-    r.pop_back();
-  }
-
-  return r;
-}
-
-static std::string typeField(const Function& f)
-{
-  std::string r;
-
-  if (f.isTemplate())
-    r += "<" + join(f.templateParameters()) + "> ";
-
-  r += "(" + join(f.parameters) + ")";
-
-  r += " -> " + f.return_type;
-
-  return r;
-}
-
-static std::string join(const std::vector<BaseClass>& bases)
-{
-  std::string r;
-
-  for (const BaseClass& b : bases)
-  {
-    r += b.toString() + ", ";
-  }
-
-  if (!bases.empty())
-  {
-    r.pop_back();
-    r.pop_back();
-  }
-
-  return r;
-}
-static std::string typeField(const Class& c)
-{
-  std::string r;
-
-  if (c.isTemplate())
-    r += "<" + join(c.templateParameters()) + "> ";
-
-  r += "[" + join(c.bases) + "]";
-
-  return r;
-}
-
-void write_symbol(Snapshot& snapshot, const Symbol& sym)
-{
-  sql::Statement stmt{ snapshot.dbHandle(), "INSERT OR REPLACE INTO symbol(id, what, parent, name, flags, type, value) VALUES(?,?,?,?,?,?,?)" };
-
-  stmt.bind(1, sym.id);
-  stmt.bind(2, static_cast<int>(sym.whatsit()));
-
-  if (sym.parent_id >= 0)
-    stmt.bind(3, sym.parent_id);
-  else
-    stmt.bind(3, nullptr);
-
-  stmt.bind(4, sym.name.c_str());
-
-  stmt.bind(5, sym.flags);
-
-  stmt.bind(6, nullptr);
-  stmt.bind(7, nullptr);
-
-  switch (sym.whatsit())
-  {
-  case Whatsit::Class:
-  case Whatsit::ClassTemplate:
-  {
-    const auto& c = static_cast<const Class&>(sym);
-
-    std::string type = typeField(c);
-    stmt.bind(6, type.c_str());
-
-    stmt.step();
-  }
-  break;
-  case Whatsit::Function:
-  case Whatsit::FunctionTemplate:
-  {
-    const auto& f = static_cast<const Function&>(sym);
-
-    std::string type = typeField(f);
-    stmt.bind(6, type.c_str());
-
-    stmt.step();
-  }
-  break;
-  case Whatsit::Namespace:
-  case Whatsit::Enum:
-  case Whatsit::EnumValue:
-  {
-    stmt.step();
-  }
-  break;
-  case Whatsit::Variable:
-  {
-    const auto& var = static_cast<const Variable&>(sym);
-
-    stmt.bind(6, var.type.c_str());
-    stmt.bind(7, var.default_value.c_str());
-
-    stmt.step();
-  }
-  break;
-  case Whatsit::Typedef:
-  {
-    const auto& tpd = static_cast<const Typedef&>(sym);
-
-    stmt.bind(6, tpd.typedef_type.c_str());
-
-    stmt.step();
-  }
-  break;
-  case Whatsit::TypeAlias:
-  {
-    const auto& talias = static_cast<const TypeAlias&>(sym);
-
-    stmt.bind(6, talias.aliased_type.c_str());
-
-    stmt.step();
-  }
-  break;
-  default:
-    break;
-  }
-}
-
-void insert_symbol_uses(Snapshot& snapshot, const std::vector<SymbolUse>& uses)
-{
-  sql::Statement symref_query{ 
-    snapshot.dbHandle(), 
-    "INSERT INTO symbolreference (symbol_id, file_id, line, col) VALUES (?,?,?,?)" 
-  };
-
-  sql::Statement symdef_query{
-    snapshot.dbHandle(),
-    "INSERT INTO definition (symbol_id, file_id, line, col) VALUES (?,?,?,?)"
-  };
-
-  sql::Statement symdecl_query{
-    snapshot.dbHandle(),
-    "INSERT INTO declaration (symbol_id, file_id, line, col) VALUES (?,?,?,?)"
-  };
-
-  for (const SymbolUse& use : uses)
-  {
-    switch (use.howused)
-    {
-    case SymbolUse::Reference:
-    {
-      symref_query.bind(1, use.symbol_id);
-      symref_query.bind(2, use.file_id);
-      symref_query.bind(3, use.line);
-      symref_query.bind(4, use.col);
-
-      symref_query.step();
-    }
-    break;
-    case SymbolUse::Declaration:
-    {
-      symdecl_query.bind(1, use.symbol_id);
-      symdecl_query.bind(2, use.file_id);
-      symdecl_query.bind(3, use.line);
-      symdecl_query.bind(4, use.col);
-
-      symdecl_query.step();
-    }
-    break;
-    case SymbolUse::Definition:
-    {
-      symdef_query.bind(1, use.symbol_id);
-      symdef_query.bind(2, use.file_id);
-      symdef_query.bind(3, use.line);
-      symdef_query.bind(4, use.col);
-
-      symdef_query.step();
-    }
-    break;
-    }
-  }
-}
-
 
 } // namespace csnap

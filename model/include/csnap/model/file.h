@@ -5,7 +5,8 @@
 #ifndef CSNAP_FILE_H
 #define CSNAP_FILE_H
 
-#include <optional>
+#include "fileid.h"
+
 #include <string>
 
 namespace csnap
@@ -13,10 +14,17 @@ namespace csnap
 
 struct File
 {
-  int id = -1;
+  FileId id;
   std::string path;
-  std::optional<std::string> content;
 };
+
+inline File create_file(std::string path, FileId id = {})
+{
+  File f;
+  f.id = id;
+  f.path = std::move(path);
+  return f;
+}
 
 } // namespace csnap
 

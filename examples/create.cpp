@@ -6,49 +6,44 @@
 
 #include <csnap/model/file.h>
 #include <csnap/model/include.h>
-#include <csnap/model/symbols.h>
-#include <csnap/model/use.h>
+#include <csnap/model/symbol.h>
 
 #include <iostream>
 
 int main(int argc, char* argv[])
 {
-  csnap::Snapshot snap;
-  snap.create("testsnap.db");
+  auto snap = csnap::Snapshot::create("testsnap.db");
 
-  csnap::set_snapshot_info(snap, "name", "toto");
+  snap.setProperty("name", "toto");
 
-  std::cout << csnap::get_snapshot_info(snap, "name") << std::endl;
+  std::cout << snap.property("name") << std::endl;
 
   csnap::File exampleh;
-  exampleh.id = 1;
   exampleh.path = "example.h";
-
-  csnap::insert_file(snap, exampleh);
+  exampleh.id = snap.addFile(exampleh)->id;
 
   csnap::File examplecpp;
-  examplecpp.id = 2;
   examplecpp.path = "example.cpp";
+  examplecpp.id = snap.addFile(examplecpp)->id;
 
-  csnap::insert_file(snap, examplecpp);
-
+  /*
   csnap::Include incl;
-  incl.file_id = examplecpp.id;
-  incl.included_file_id = exampleh.id;
+  incl.file_id = examplecpp.id.value();
+  incl.included_file_id = exampleh.id.value();
   incl.line = 2;
+  */
 
-  csnap::insert_includes(snap, { incl });
+  csnap::Symbol empty{ csnap::Whatsit::CXXClass, "Empty" };
+  empty.id = csnap::SymbolId(1);
 
-  csnap::Class empty{ "Empty" };
-  empty.id = 1;
+  snap.addSymbols({ std::make_shared<csnap::Symbol>(empty) });
 
-  csnap::write_symbol(snap, empty);
-
-  csnap::SymbolDefinition def;
-  def.symbol_id = empty.id;
-  def.file_id = examplecpp.id;
+  csnap::SymbolReference def;
+  def.symbol_id = empty.id.value();
+  def.file_id = examplecpp.id.value();
   def.line = 5;
   def.col = 1;
+  def.flags = csnap::SymbolReference::Definition;
 
-  csnap::insert_symbol_uses(snap, { def });
+  snap.addSymbolReferences({ def });
 }

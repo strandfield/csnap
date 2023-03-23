@@ -4,18 +4,273 @@
 
 #include "indexer.h"
 
-#include "csnap/database/sql.h"
+#include "csnap/database/snapshot.h"
 
 #include "csnap/model/file.h"
 #include "csnap/model/include.h"
-#include "csnap/model/symbols.h"
-#include "csnap/model/use.h"
+#include "csnap/model/reference.h"
+#include "csnap/model/symbol.h"
+#include "csnap/model/usrmap.h"
 
-#include <cassert>
+#include <libclang-utils/index-action.h>
+#include <libclang-utils/clang-cursor.h>
+
 #include <filesystem>
 #include <iostream>
 
 namespace csnap
 {
+
+template<typename T>
+class AddressableIds
+{
+public:
+
+  void* create(Identifier<T> id)
+  {
+    m_ids.push_back(std::make_unique<Identifier<T>>(id));
+    return m_ids.back().get();
+  }
+
+  Identifier<T> get(void* data)
+  {
+    auto* ptr = reinterpret_cast<Identifier<T>*>(data);
+    return ptr ? *ptr : Identifier<T>();
+  }
+
+private:
+  std::vector<std::unique_ptr<Identifier<T>>> m_ids;
+};
+
+class TranslationUnitIndexer : public libclang::BasicIndexer
+{
+private:
+  csnap::Indexer& indexer;
+  UsrMap usrs;
+  AddressableIds<Symbol> m_symbols;
+  AddressableIds<File> m_files;
+
+public:
+  IndexingResult result;
+
+public:
+  explicit TranslationUnitIndexer(csnap::Indexer& idx) : libclang::BasicIndexer(idx.libclangAPI()),
+    indexer(idx)
+  {
+
+  }
+
+  void* enteredMainFile(const libclang::File& mainFile)
+  {
+    std::string path = mainFile.getFileName();
+    auto [file, created] = indexer.getOrCreateFile(path);
+
+    if (created)
+      result.files.push_back(file);
+
+    return m_files.create(file->id);
+  }
+
+  void* ppIncludedFile(const CXIdxIncludedFileInfo* inclFile)
+  {
+    std::string path = indexer.libclangAPI().file(inclFile->file).getFileName();
+
+    auto [file, created] = indexer.getOrCreateFile(path);
+
+    if (created)
+      result.files.push_back(file);
+
+    result.included_files.push_back(file);
+
+    return m_files.create(file->id);
+  }
+
+  void indexDeclaration(const CXIdxDeclInfo* decl)
+  {
+    std::string usr{ decl->entityInfo->USR };
+
+    SymbolId id = usrs.find(usr);
+
+    if (!id.valid())
+    {
+      // $TODO: maybe we should assign temporary ids to 
+      // the symbols and then rewrite the id when aggregating 
+      // the indexing results.
+      auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
+      id = uid;
+      // update local "cache"
+      usrs.insert(usr, id);
+
+      if (inserted)
+      {
+        std::unique_ptr<Symbol> sym = create_symbol(decl, id);
+
+        // $TODO: if symbol is a class, list the base classes
+
+        result.symbols.push_back(std::move(sym));
+      }
+    }
+    else
+    {
+      if (decl->isDefinition || decl->isRedeclaration)
+      {
+        // $TODO: we may more accurately fill the Symbol struct here ?
+      }
+    }
+
+    void* refid = m_symbols.create(id);
+    setClientData(decl->declAsContainer, refid);
+    setClientData(decl->entityInfo, refid);
+  }
+
+  void indexEntityReference(const CXIdxEntityRefInfo* ref)
+  {
+    SymbolId symid = m_symbols.get(getClientData(ref->referencedEntity));
+
+    if (!symid.valid())
+    {
+      // $TODO: what?
+      //std::string usr{ ref->referencedEntity->USR };
+      //usrs.find(usr);
+
+      return;
+    }
+ 
+    FileLocation loc = getFileLocation(ref->loc);
+    FileId fileid = m_files.get(loc.client_data);
+
+    if (!fileid.valid())
+      return;
+
+    SymbolReference symref;
+    symref.col = loc.column;
+    symref.line = loc.line;
+    symref.file_id = fileid.value();
+    symref.symbol_id = symid.value();
+    symref.flags = ref->role;
+    result.references.push_back(symref);
+  }
+
+protected:
+
+  const char* name(const CXIdxEntityInfo* entity)
+  {
+    return entity->name != nullptr ? entity->name : "";
+  }
+
+  std::unique_ptr<Symbol> create_symbol(const CXIdxDeclInfo* decl, SymbolId id)
+  {
+    auto s = std::make_unique<Symbol>(static_cast<Whatsit>(decl->entityInfo->kind), name(decl->entityInfo));
+    s->id = SymbolId(id.value());
+    s->parent_id = m_symbols.get(getClientData(decl->semanticContainer));
+    s->display_name = libclangAPI().cursor(decl->entityInfo->cursor).getDisplayName();
+
+    // $TODO: fill extra information depending on the kind of symbol
+
+    return s;
+  }
+};
+
+class IndexTranslationUnit : public Runnable
+{
+public:
+  Indexer& indexer;
+  TranslationUnitParsingResult parsingResult;
+
+public:
+  IndexTranslationUnit(Indexer& idxr, TranslationUnitParsingResult pr) :
+    indexer(idxr),
+    parsingResult(std::move(pr))
+  {
+
+  }
+
+  void run() override
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    TranslationUnitIndexer tui{ indexer };
+    indexer.indexAction().indexTranslationUnit(*parsingResult.result, tui);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    tui.result.indexing_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    indexer.results().write(std::move(tui.result));
+  }
+};
+
+Indexer::Indexer(libclang::Index& index, Snapshot& snapshot) :
+  m_index(index),
+  m_snapshot(snapshot),
+  m_threads(1), // $Note: not sure clang index action is thread-safe so we only use 1 thread for indexing
+  m_file_id_generator((int)snapshot.files().all().size())
+{
+  m_index_action = std::make_unique<libclang::IndexAction>(index);
+}
+
+Indexer::~Indexer()
+{
+  if (!results().empty())
+  {
+    std::cout << "Warning: results() isn't empty in ~Indexer()" << std::endl;
+  }
+}
+
+libclang::LibClang& Indexer::libclangAPI()
+{
+  return indexAction().api;
+}
+
+libclang::IndexAction& Indexer::indexAction()
+{
+  return *m_index_action;
+}
+
+/**
+ * \brief returns a reference to the snapshot passed to the constructor
+ */
+Snapshot& Indexer::snapshot() const
+{
+  return m_snapshot;
+}
+
+void Indexer::asyncIndex(TranslationUnitParsingResult parsingResult)
+{
+  if (!parsingResult.result)
+    return;
+
+  m_threads.run(new IndexTranslationUnit(*this, std::move(parsingResult)));
+}
+
+bool Indexer::done() const
+{
+  return m_threads.done();
+}
+
+IndexerResultQueue& Indexer::results()
+{
+  return m_results;
+}
+
+std::pair<File*, bool> Indexer::getOrCreateFile(std::string path)
+{
+  // @TODO: make thread-safe
+
+  File* f = snapshot().findFile(path);
+
+  if (f)
+    return { f, false };
+
+  f = new File;
+  f->path = std::move(path);
+  f->id = FileId(m_file_id_generator++);
+
+  return { f, true };
+}
+
+GlobalUsrMap& Indexer::sharedUsrMap()
+{
+  return m_usrs;
+}
 
 } // namespace csnap

@@ -1,0 +1,6 @@
+[submodule "indexer/vcxproj"]
+	path = indexer/vcxproj
+	url = https://github.com/strandfield/vcxproj.git
+[submodule "indexer/libclang-utils"]
+	path = indexer/libclang-utils
+	url = https://github.com/strandfield/libclang-utils.git

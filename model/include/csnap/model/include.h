@@ -11,6 +11,7 @@
 namespace csnap
 {
 
+// $TODO: rework with FileId
 struct Include
 {
   int file_id = -1;

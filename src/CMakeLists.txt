@@ -7,3 +7,7 @@ target_link_libraries(csnap csnap-model csnap-database csnap-indexer)
 
 set_target_properties(csnap PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set_target_properties(csnap PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+if (WIN32)
+  set_target_properties(csnap PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=${TINYXML2_INCLUDE}/../bin;%PATH%")
+endif()

@@ -5,45 +5,73 @@
 #ifndef CSNAP_SNAPSHOT_H
 #define CSNAP_SNAPSHOT_H
 
-#include <filesystem>
-#include <vector>
+#include "database.h"
 
-typedef struct sqlite3 sqlite3;
+#include "csnap/model/filelist.h"
+#include "csnap/model/translationunitlist.h"
+#include "csnap/model/reference.h"
+#include "csnap/model/symbolcache.h"
+
+#include <filesystem>
+#include <memory>
+#include <utility>
 
 namespace csnap
 {
 
-class File;
-struct Include;
-class Symbol;
-struct SymbolUse;
+struct PendingData;
 
 class Snapshot
 {
 public:
+  Snapshot() = delete; // @TODO: in-memory db ?
+  Snapshot(const Snapshot&) = delete;
+  Snapshot(Snapshot&&);
   ~Snapshot();
 
-  sqlite3* dbHandle() const;
+  explicit Snapshot(Database db);
 
-  bool good() const;
+  const Database& database() const;
 
-  bool open(const std::filesystem::path& dbPath);
+  static Snapshot open(const std::filesystem::path& p);
+  static Snapshot create(const std::filesystem::path& p);
 
-  void create(const std::filesystem::path& dbPath);
+  void setProperty(const std::string& key, const std::string& value);
+  std::string property(const std::string& key) const;
 
-  void close();
+  File* addFile(File f);
+  void addFile(File* f);
+  void addFiles(const std::vector<File>& files);
+  File* getFile(FileId id) const;
+  File* findFile(const std::string& path) const;
+  const FileList& files() const;
+
+  void addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts);
+  TranslationUnit* findTranslationUnit(File* file) const;
+  TranslationUnit* getTranslationUnit(TranslationUnitId id) const;
+  const TranslationUnitList& translationUnits() const;
+  void addTranslationUnitSerializedAst(TranslationUnit* tu, const std::filesystem::path& astfile);
+
+  void addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols);
+  SymbolCache& symbolCache();
+
+  void addSymbolReferences(const std::vector<SymbolReference>& list);
+  std::vector<SymbolReference> listReferencesInFile(FileId file);
+
+  bool hasPendingData() const;
+  void writePendingData();
+
+protected:
+  PendingData& pendingData();
+  void loadProgram();
 
 private:
-  sqlite3* m_database = nullptr;
+  std::unique_ptr<Database> m_database;
+  FileList m_files; // $TODO: add a class that will generate ids for files, see also getOrCreateFile() in class Indexer
+  TranslationUnitList m_translationunits;
+  SymbolCache m_symbol_cache;
+  std::unique_ptr<PendingData> m_pending_data;
 };
-
-void set_snapshot_info(Snapshot& snapshot, const std::string& key, const std::string& value);
-std::string get_snapshot_info(const Snapshot& snapshot, const std::string& key);
-
-void insert_file(Snapshot& snapshot, const File& file);
-void insert_includes(Snapshot& snapshot, const std::vector<Include>& includes);
-void write_symbol(Snapshot& snapshot, const Symbol& sym);
-void insert_symbol_uses(Snapshot& snapshot, const std::vector<SymbolUse>& uses);
 
 } // namespace csnap
 

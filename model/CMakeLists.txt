@@ -4,6 +4,7 @@ file(GLOB_RECURSE HDR_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/**.h)
 
 add_library(csnap-model STATIC ${SRC_FILES} ${HDR_FILES})
 target_include_directories(csnap-model PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(csnap-model PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/csnap/model")
 
 set_target_properties(csnap-model PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
