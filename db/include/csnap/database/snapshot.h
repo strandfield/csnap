@@ -40,7 +40,7 @@ public:
   void setProperty(const std::string& key, const std::string& value);
   std::string property(const std::string& key) const;
 
-  // $TODO: static std::string getCanonicalPath(const std::string& path)
+  static std::string getCanonicalPath(std::string path);
 
   File* addFile(File f);
   void addFile(std::unique_ptr<File> f);

@@ -8,6 +8,7 @@
 #include "sqlqueries.h"
 #include "transaction.h"
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -102,9 +103,21 @@ std::string Snapshot::property(const std::string& key) const
   return select_info(*m_database, key);
 }
 
+/**
+ * \brief returns a path with all backward slashes replaced by forward slashes
+ */
+std::string Snapshot::getCanonicalPath(std::string path)
+{
+  std::for_each(path.begin(), path.end(), [](char& c) {
+    if (c == '\\') c = '/';
+    });
+
+  return path;
+}
+
 File* Snapshot::addFile(File f)
 {
-  File* file = m_files.add(std::move(f.path));
+  File* file = m_files.add(getCanonicalPath(std::move(f.path)));
 
   pendingData().files.push_back(FileId(file->id));
 
@@ -113,6 +126,7 @@ File* Snapshot::addFile(File f)
 
 void Snapshot::addFile(std::unique_ptr<File> f)
 {
+  f->path = getCanonicalPath(std::move(f->path));
   FileId id = m_files.add(std::move(f))->id;
   pendingData().files.push_back(id);
 }
@@ -132,7 +146,12 @@ File* Snapshot::getFile(FileId id) const
 
 File* Snapshot::findFile(const std::string& path) const
 {
-  return files().find(path);
+  bool looks_canonical = std::find(path.begin(), path.end(), '\\') == path.end();
+
+  if (looks_canonical)
+    return files().find(path);
+  else
+    return files().find(getCanonicalPath(path));
 }
 
 const FileList& Snapshot::files() const
