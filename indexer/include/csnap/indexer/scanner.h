@@ -15,6 +15,9 @@ namespace csnap
 class Scanner
 {
 public:
+  bool save_ast = false;
+
+public:
 
   void initSnapshot(std::filesystem::path& p);
 

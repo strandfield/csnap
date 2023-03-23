@@ -69,8 +69,18 @@ bool overwrite(std::vector<std::string>& args)
   return read_optional_flag(args, { "--overwrite" });
 }
 
+bool save_ast(std::vector<std::string>& args)
+{
+  return read_optional_flag(args, { "--save-ast" });
+}
+
 void scan(std::vector<std::string>& args)
 {
+  using namespace csnap;
+
+  Scanner scanner;
+  scanner.save_ast = save_ast(args);
+
   std::filesystem::path dbpath = output(args);
   std::filesystem::path slnpath = input(args);
   bool should_overwrite = overwrite(args);
@@ -100,8 +110,6 @@ void scan(std::vector<std::string>& args)
     }
   }
 
-  using namespace csnap;
-  Scanner scanner;
   scanner.initSnapshot(dbpath);
   scanner.scanSln(slnpath);
 }

@@ -44,7 +44,6 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
   // $TODO: write bases
   (void)idxres.bases;
 
-  // $TODO: need to remove duplicates in idxres
   snapshot.addSymbolReferences(idxres.references);
 
   snapshot.writePendingData();
@@ -78,12 +77,13 @@ void Scanner::scanSln(const std::filesystem::path& slnPath)
   {
     TranslationUnitParsingResult pr{ parser.results().next() };
 
-    // $TODO: add flag to enable/disable ast export
-    // should be disabled by default ?
-    save_to_db(pr, *m_snapshot);
-
     if (pr.result)
     {
+      if (save_ast)
+      {
+        save_to_db(pr, *m_snapshot);
+      }
+
       indexer.asyncIndex(std::move(pr));
     }
 
