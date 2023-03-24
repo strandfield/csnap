@@ -41,6 +41,7 @@ public:
   std::string property(const std::string& key) const;
 
   static std::string getCanonicalPath(std::string path);
+  static std::string readFile(const std::filesystem::path& filepath);
 
   File* addFile(File f);
   void addFile(std::unique_ptr<File> f);
@@ -48,6 +49,7 @@ public:
   File* getFile(FileId id) const;
   File* findFile(const std::string& path) const;
   const FileList& files() const;
+  void addFilesContent();
 
   void addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts);
   TranslationUnit* findTranslationUnit(File* file) const;

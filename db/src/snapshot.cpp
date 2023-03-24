@@ -120,6 +120,18 @@ std::string Snapshot::getCanonicalPath(std::string path)
   return path;
 }
 
+/**
+ * \brief reads a file completely into memory
+ */
+std::string Snapshot::readFile(const std::filesystem::path& filepath)
+{
+  std::ifstream file{ filepath.string(), std::ios::binary };
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string bytes{ buffer.str() };
+  return bytes;
+}
+
 File* Snapshot::addFile(File f)
 {
   File* file = m_files.add(getCanonicalPath(std::move(f.path)));
@@ -164,6 +176,14 @@ const FileList& Snapshot::files() const
   return m_files;
 }
 
+/**
+ * \brief saves a copy of every file in the database
+ */
+void Snapshot::addFilesContent()
+{
+  insert_file_content(*m_database, files().all());
+}
+
 void Snapshot::addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts)
 {
   auto optsptr = std::make_shared<program::CompileOptions>(opts);
@@ -197,10 +217,7 @@ const TranslationUnitList& Snapshot::translationUnits() const
 
 void Snapshot::addTranslationUnitSerializedAst(TranslationUnit* tu, const std::filesystem::path& astfile)
 {
-  std::ifstream file{ astfile.string(), std::ios::binary };
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  std::string bytes{ buffer.str() };
+  std::string bytes = readFile(astfile);
 
   insert_translationunit_ast(*m_database, tu, bytes);
 }

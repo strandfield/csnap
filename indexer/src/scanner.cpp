@@ -71,6 +71,10 @@ void Scanner::scanSln(const std::filesystem::path& slnPath)
     parser.asyncParse(tu);
   }
 
+  // We have some time before parsing results become available, 
+  // we use this time to save the file's content into database:
+  m_snapshot->addFilesContent();
+
   Indexer indexer{ index, *m_snapshot };
   IndexingResultAggregator aggregator{ *m_snapshot };
 

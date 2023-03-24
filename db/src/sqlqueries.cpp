@@ -4,6 +4,7 @@
 
 #include "sqlqueries.h"
 
+#include "snapshot.h"
 #include "sql.h"
 
 #include "csnap/model/file.h"
@@ -218,6 +219,32 @@ void insert_file(Database& db, const File& file)
   stmt.finalize();
 }
 
+void insert_file_content(Database& db, const std::vector<File*>& files)
+{
+  sql::Statement stmt{ db, "UPDATE file SET content = ? WHERE id = ?" };
+
+  for (File* f : files)
+  {
+    if (!f)
+      continue;
+
+    std::filesystem::path filepath{ f->path };
+
+    if (!std::filesystem::exists(filepath))
+      continue;
+
+    std::string bytes = Snapshot::readFile(filepath);
+
+    stmt.bind(2, f->id.value());
+    stmt.bind(1, bytes.c_str());
+
+    stmt.step();
+    stmt.reset();
+  }
+
+  stmt.finalize();
+}
+
 static std::string join(const std::vector<std::string>& list, char sep = ';')
 {
   if (list.empty())
@@ -225,7 +252,7 @@ static std::string join(const std::vector<std::string>& list, char sep = ';')
   else if (list.size() == 1)
     return list.front();
 
-  size_t s = std::accumulate(list.begin(), list.end(), 0, [](size_t n, const std::string& str) {
+  size_t s = std::accumulate(list.begin(), list.end(), size_t(0), [](size_t n, const std::string& str) {
     return n + str.size();
     });
 
