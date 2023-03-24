@@ -65,7 +65,24 @@ Snapshot::Snapshot(Database db) :
   if (!m_database->good())
     throw std::runtime_error("snapshot constructor expects a good() database");
 
-  // $TODO: load files & translation units
+  {
+    std::vector<File> all_files = select_file(*m_database);
+
+    for (File& f : all_files)
+    {
+      m_files.add(std::make_unique<File>(std::move(f)));
+    }
+  }
+
+  {
+    std::vector<TranslationUnit> all_units = select_translationunit(*m_database);
+
+    for (TranslationUnit& tu : all_units)
+    {
+      m_translationunits.add(std::make_unique<TranslationUnit>(std::move(tu)));
+    }
+  }
+
 }
 
 const Database& Snapshot::database() const

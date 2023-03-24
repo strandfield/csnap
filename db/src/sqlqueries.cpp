@@ -485,4 +485,122 @@ void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>&
   query.finalize();
 }
 
+template<typename T, typename F>
+std::vector<T> read_vector(sql::Statement& stmt, F&& func)
+{
+  std::vector<T> r;
+
+  while (stmt.step())
+  {
+    r.push_back(func(stmt));
+  }
+
+  return r;
+}
+
+File read_file(sql::Statement& stmt, int id_col = 0, int path_col = 1)
+{
+  File f;
+  f.id = FileId(stmt.columnInt(id_col));
+  f.path = stmt.column(path_col);
+  return f;
+}
+
+std::vector<File> select_file(Database& db)
+{
+  sql::Statement stmt{ db, "SELECT id, path FROM file" };
+  return read_vector<File>(stmt, [](sql::Statement& q) {
+    return read_file(q);
+    });
+}
+
+template<typename F>
+static void split_apply(const std::string& liststr, char sep, F&& func)
+{
+  auto it = liststr.begin();
+  auto next = std::find(liststr.begin(), liststr.end(), sep);
+
+  while (next != liststr.end())
+  {
+    func(std::string(it, next));
+    it = next + 1;
+    next = std::find(it, liststr.end(), sep);
+  }
+
+  func(std::string(it, next));
+}
+
+static std::map<std::string, std::string> split_defines(const std::string& liststr)
+{
+  std::map<std::string, std::string> r;
+
+  auto insert_define = [&r](std::string str) {
+    if (str.empty())
+      return;
+
+    size_t n = str.find('=');
+
+    if (n == std::string::npos)
+    {
+      r[str] = std::string();
+    }
+    else
+    {
+      r[str.substr(0, n)] = str.substr(n + 1);
+    }
+  };
+
+  split_apply(liststr, ';', insert_define);
+
+  return r;
+}
+
+static std::set<std::string> split_includes(const std::string& liststr)
+{
+  std::set<std::string> r;
+
+  auto insert_if_not_empty = [&r](std::string str) {
+    if (!str.empty())
+      r.insert(std::move(str));
+  };
+
+  split_apply(liststr, ';', insert_if_not_empty);
+
+  return r;
+}
+
+std::map<int, std::shared_ptr<program::CompileOptions>> select_compileoptions(Database& db)
+{
+  std::map<int, std::shared_ptr<program::CompileOptions>> dict;
+
+  sql::Statement stmt{ db, "SELECT id, defines, includedirs FROM compileoptions" };
+
+  while (stmt.step())
+  {
+    int id = stmt.columnInt(0);
+    auto opt = std::make_shared<program::CompileOptions>();
+    opt->defines = split_defines(stmt.column(1));
+    opt->includedirs = split_includes(stmt.column(2));
+
+    dict[id] = opt;
+  }
+
+  return dict;
+}
+
+std::vector<TranslationUnit> select_translationunit(Database& db)
+{
+  std::map<int, std::shared_ptr<program::CompileOptions>> copts = select_compileoptions(db);
+
+  sql::Statement stmt{ db, "SELECT id, file_id, compileoptions_id FROM translationunit" };
+
+  return read_vector<TranslationUnit>(stmt, [&copts](sql::Statement& stmt) {
+    TranslationUnit tu;
+    tu.id = TranslationUnitId(stmt.columnInt(0));
+    tu.sourcefile_id = FileId(stmt.columnInt(1));
+    tu.compile_options = copts[stmt.columnInt(2)];
+    return tu;
+    });
+}
+
 } // namespace csnap

@@ -11,6 +11,7 @@
 #include "csnap/model/symbolid.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,11 @@ struct Include;
 struct SymbolReference;
 struct Symbol;
 struct TranslationUnit;
+
+namespace program
+{
+struct CompileOptions;
+} // namespace program
 
 const char* db_init_statements();
 
@@ -41,6 +47,10 @@ void insert_symbol(Database& db, const Symbol& sym);
 void insert_symbol(Database& db, const std::vector<std::shared_ptr<Symbol>>& symbols);
 void insert_symbol_references(Database& db, const std::vector<SymbolReference>& references);
 void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases);
+
+std::vector<File> select_file(Database& db);
+std::map<int, std::shared_ptr<program::CompileOptions>> select_compileoptions(Database& db);
+std::vector<TranslationUnit> select_translationunit(Database& db);
 
 } // namespace csnap
 
