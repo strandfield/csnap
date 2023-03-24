@@ -12,6 +12,8 @@
 #include "csnap/model/symbol.h"
 #include "csnap/model/translationunit.h"
 
+#include <numeric>
+
 namespace csnap
 {
 
@@ -30,11 +32,19 @@ CREATE TABLE IF NOT EXISTS "file" (
   "content" TEXT
 );
 
+CREATE TABLE "compileoptions" (
+  "id"          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+  "defines"     TEXT NOT NULL,
+  "includedirs" TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS "translationunit" (
-  "id"                   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "file_id"              INTEGER NOT NULL,
-  "ast"                  BLOB,
-  FOREIGN KEY("file_id") REFERENCES "file"("id")
+  "id"                             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+  "file_id"                        INTEGER NOT NULL,
+  "compileoptions_id"              INTEGER,
+  "ast"                            BLOB,
+  FOREIGN KEY("file_id")           REFERENCES "file"("id"),
+  FOREIGN KEY("compileoptions_id") REFERENCES "compileoptions"("id")
 );
 
 CREATE TABLE "ppinclude" (
@@ -208,14 +218,87 @@ void insert_file(Database& db, const File& file)
   stmt.finalize();
 }
 
+static std::string join(const std::vector<std::string>& list, char sep = ';')
+{
+  if (list.empty())
+    return {};
+  else if (list.size() == 1)
+    return list.front();
+
+  size_t s = std::accumulate(list.begin(), list.end(), 0, [](size_t n, const std::string& str) {
+    return n + str.size();
+    });
+
+  s += (list.size() - 1);
+
+  std::string str;
+  str.reserve(s);
+
+  auto it = list.begin();
+
+  for (; it != std::prev(list.end()); ++it)
+  {
+    str.insert(str.end(), it->begin(), it->end());
+    str.push_back(sep);
+  }
+
+  str.insert(str.end(), it->begin(), it->end());
+
+  return str;
+}
+
+static std::string join_defines(const std::map<std::string, std::string>& defines)
+{
+  std::vector<std::string> list;
+
+  for (const std::pair<const std::string, std::string>& d : defines)
+  {
+    if (d.second.empty())
+      list.push_back(d.first);
+    else
+      list.push_back(d.first + "=" + d.second);
+  }
+
+  return join(list);
+}
+
+static std::string join_includedirs(const std::set<std::string>& includedirs)
+{
+  return join(std::vector<std::string>(includedirs.begin(), includedirs.end()));
+}
+
+static int get_compile_options_id(std::map<const program::CompileOptions*, int>& map, sql::Statement& insert_query, const program::CompileOptions* copts)
+{
+  auto it = map.find(copts);
+
+  if (it != map.end())
+    return it->second;
+
+  insert_query.bind(1, join_defines(copts->defines));
+  insert_query.bind(2, join_includedirs(copts->includedirs));
+
+  insert_query.step();
+  insert_query.reset();
+
+  int id = insert_query.rowid();
+
+  map[copts] = id;
+
+  return id;
+}
+
 void insert_translationunit(Database& db, const std::vector<TranslationUnit*>& units)
 {
-  sql::Statement stmt{ db, "INSERT INTO translationunit(id, file_id) VALUES(?, ?)" };
+  std::map<const program::CompileOptions*, int> copts_ids;
+
+  sql::Statement coptions_query{ db, "INSERT INTO compileoptions(defines, includedirs) VALUES(?,?)" };
+  sql::Statement stmt{ db, "INSERT INTO translationunit(id, file_id, compileoptions_id) VALUES(?, ?, ?)" };
 
   for (TranslationUnit* tu : units)
   {
     stmt.bind(1, tu->id.value());
     stmt.bind(2, tu->sourcefile_id.value());
+    stmt.bind(3, get_compile_options_id(copts_ids, coptions_query, tu->compile_options.get()));
 
     stmt.step();
     stmt.reset();

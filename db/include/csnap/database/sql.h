@@ -39,6 +39,7 @@ public:
 
   void bind(int n, std::nullptr_t);
   void bind(int n, const char* text);
+  void bind(int n, std::string&& text);
   void bind(int n, int value);
   void bindBlob(int n, const std::string& bytes);
 
@@ -111,6 +112,11 @@ inline void Statement::bind(int n, std::nullptr_t)
 inline void Statement::bind(int n, const char* text)
 {
   sqlite3_bind_text(m_statement, n, text, -1, nullptr);
+}
+
+inline void Statement::bind(int n, std::string&& text)
+{
+  sqlite3_bind_text(m_statement, n, text.c_str(), -1, SQLITE_TRANSIENT);
 }
 
 inline void Statement::bind(int n, int value)
