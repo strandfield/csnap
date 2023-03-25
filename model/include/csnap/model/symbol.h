@@ -65,10 +65,10 @@ struct Symbol
   SymbolId id;
   Whatsit kind;
   std::string name;
+  std::string usr;
   std::string display_name;
   SymbolId parent_id;
   int flags = 0;
-  // $TODO: add usr ?
 
   enum Flag
   {

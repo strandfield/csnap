@@ -195,6 +195,7 @@ protected:
     s->id = SymbolId(id.value());
     s->parent_id = m_symbols.get(getClientData(decl->semanticContainer));
     s->display_name = libclangAPI().cursor(decl->entityInfo->cursor).getDisplayName();
+    s->usr = decl->entityInfo->USR;
 
     // $TODO: fill extra information depending on the kind of symbol
 

@@ -67,11 +67,6 @@ CREATE TABLE "include" (
   UNIQUE(file_id, line)
 );
 
-CREATE TABLE IF NOT EXISTS "usr" (
-  "id"   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-  "name" TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS "symwhatsit" (
   "id"   INTEGER NOT NULL PRIMARY KEY UNIQUE,
   "name" TEXT NOT NULL
@@ -110,6 +105,7 @@ CREATE TABLE IF NOT EXISTS "symbol" (
   "what"              INTEGER NOT NULL,
   "parent"            INTEGER,
   "name"              TEXT NOT NULL,
+  "usr"               TEXT NOT NULL,
   "displayname"       TEXT,
   "flags"             INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY("what") REFERENCES "symwhatsit"("id")
@@ -411,7 +407,7 @@ void insert_symbol(Database& db, const Symbol& sym)
 
 void insert_symbol(Database& db, const std::vector<std::shared_ptr<Symbol>>& symbols)
 {
-  sql::Statement stmt{ db, "INSERT OR REPLACE INTO symbol(id, what, parent, name, displayname, flags) VALUES(?,?,?,?,?,?)" };
+  sql::Statement stmt{ db, "INSERT OR REPLACE INTO symbol(id, what, parent, name, usr, displayname, flags) VALUES(?,?,?,?,?,?,?)" };
 
   for (auto sptr : symbols)
   {
@@ -426,13 +422,14 @@ void insert_symbol(Database& db, const std::vector<std::shared_ptr<Symbol>>& sym
       stmt.bind(3, nullptr);
 
     stmt.bind(4, sym.name.c_str());
+    stmt.bind(5, sym.usr.c_str());
 
     if (!sym.display_name.empty())
-      stmt.bind(5, sym.display_name.c_str());
+      stmt.bind(6, sym.display_name.c_str());
     else
-      stmt.bind(5, nullptr);
+      stmt.bind(6, nullptr);
 
-    stmt.bind(6, sym.flags);
+    stmt.bind(7, sym.flags);
 
     stmt.step();
     stmt.reset();
