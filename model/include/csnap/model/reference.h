@@ -5,6 +5,8 @@
 #ifndef CSNAP_REFERENCE_H
 #define CSNAP_REFERENCE_H
 
+#include "symbolid.h"
+
 namespace csnap
 {
 
@@ -13,11 +15,22 @@ namespace csnap
  */
 struct SymbolReference
 {
+  /**
+   * \brief the id of the symbol that is referenced
+   */
   int symbol_id;
-  // $TODO: add parent_symbol_id
   int file_id;
   int line;
   int col;
+
+  /**
+   * \brief the id of the symbol that is referencing the referenced symbol
+   */
+  SymbolId parent_symbol_id;
+
+  /**
+   * \brief a combination of flags as described by the Flag enum
+   */
   int flags = 0;
 
   /**
@@ -45,6 +58,7 @@ inline bool operator==(const SymbolReference& lhs, const SymbolReference& rhs)
     && lhs.file_id == rhs.file_id
     && lhs.line == rhs.line
     && lhs.col == rhs.col
+    && lhs.parent_symbol_id == rhs.parent_symbol_id
     && lhs.flags == rhs.flags;
 }
 

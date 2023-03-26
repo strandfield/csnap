@@ -112,13 +112,15 @@ CREATE TABLE IF NOT EXISTS "symbol" (
 );
 
 CREATE TABLE IF NOT EXISTS "symbolreference" (
-  "symbol_id"              INTEGER NOT NULL,
-  "file_id"                INTEGER NOT NULL,
-  "line"                   INTEGER NOT NULL,
-  "col"                    INTEGER NOT NULL,
-  "flags"                  INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY("symbol_id") REFERENCES "symbol"("id"),
-  FOREIGN KEY("file_id")   REFERENCES "file"("id")
+  "symbol_id"                     INTEGER NOT NULL,
+  "file_id"                       INTEGER NOT NULL,
+  "line"                          INTEGER NOT NULL,
+  "col"                           INTEGER NOT NULL,
+  "parent_symbol_id"              INTEGER,
+  "flags"                         INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY("symbol_id")        REFERENCES "symbol"("id"),
+  FOREIGN KEY("file_id")          REFERENCES "file"("id"),
+  FOREIGN KEY("parent_symbol_id") REFERENCES "symbol"("id")
 );
 
 CREATE TABLE IF NOT EXISTS "base" (
@@ -183,7 +185,7 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file)
 {
   std::vector<SymbolReference> r;
 
-  sql::Statement stmt{ db, "SELECT symbol_id, line, col, flags FROM symbolreference WHERE file_id = ?" };
+  sql::Statement stmt{ db, "SELECT symbol_id, line, col, parent_symbol_id, flags FROM symbolreference WHERE file_id = ?" };
 
   stmt.bind(1, file.value());
 
@@ -195,7 +197,13 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file)
     symref.symbol_id = stmt.columnInt(0);
     symref.line = stmt.columnInt(1);
     symref.col = stmt.columnInt(2);
-    symref.flags = stmt.columnInt(3);
+
+    if (stmt.nullColumn(3))
+      symref.parent_symbol_id = SymbolId();
+    else
+      symref.parent_symbol_id = SymbolId(stmt.columnInt(3));
+
+    symref.flags = stmt.columnInt(4);
 
     r.push_back(symref);
   }
@@ -440,7 +448,7 @@ void insert_symbol_references(Database& db, const std::vector<SymbolReference>& 
 {
   sql::Statement query{
     db,
-    "INSERT INTO symbolreference (symbol_id, file_id, line, col, flags) VALUES (?,?,?,?,?)"
+    "INSERT INTO symbolreference (symbol_id, file_id, line, col, parent_symbol_id, flags) VALUES (?,?,?,?,?,?)"
   };
 
   for (const SymbolReference& ref : references)
@@ -449,7 +457,13 @@ void insert_symbol_references(Database& db, const std::vector<SymbolReference>& 
     query.bind(2, ref.file_id);
     query.bind(3, ref.line);
     query.bind(4, ref.col);
-    query.bind(5, ref.flags);
+
+    if (ref.parent_symbol_id.valid())
+      query.bind(5, ref.parent_symbol_id.value());
+    else 
+      query.bind(5, nullptr);
+
+    query.bind(6, ref.flags);
 
     query.step();
     query.reset();

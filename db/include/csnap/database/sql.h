@@ -43,6 +43,7 @@ public:
   void bind(int n, int value);
   void bindBlob(int n, const std::string& bytes);
 
+  bool nullColumn(int n) const;
   std::string column(int n) const;
   int columnInt(int n) const;
 };
@@ -127,6 +128,11 @@ inline void Statement::bind(int n, int value)
 inline void Statement::bindBlob(int n, const std::string& bytes)
 {
   sqlite3_bind_blob(m_statement, n, bytes.c_str(), (int)bytes.size(), nullptr);
+}
+
+inline bool Statement::nullColumn(int n) const
+{
+  return sqlite3_column_type(m_statement, n) == SQLITE_NULL;
 }
 
 inline std::string Statement::column(int n) const

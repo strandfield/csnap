@@ -169,6 +169,10 @@ public:
     symref.line = loc.line;
     symref.symbol_id = symid.value();
     symref.flags = ref->role;
+
+    if(ref->parentEntity) 
+      symref.parent_symbol_id = get_symbol_id(ref->parentEntity);
+
     result.references.push_back(symref);
   }
 
