@@ -31,6 +31,9 @@ class GlobalUsrMap
 {
 public:
 
+  // $TODO: add a clone function
+  UsrMap clone();
+
   std::pair<SymbolId, bool> get(const std::string& usr);
 
 protected:

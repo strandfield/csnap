@@ -75,7 +75,7 @@ protected:
 
 private:
   std::unique_ptr<Database> m_database;
-  FileList m_files; // $TODO: add a class that will generate ids for files, see also getOrCreateFile() in class Indexer
+  FileList m_files; // $TODO: add a class that will generate ids for files, see also getFile() in class Indexer
   TranslationUnitList m_translationunits;
   SymbolCache m_symbol_cache;
   std::unique_ptr<PendingData> m_pending_data;

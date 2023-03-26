@@ -14,6 +14,7 @@ namespace csnap
 struct SymbolReference
 {
   int symbol_id;
+  // $TODO: add parent_symbol_id
   int file_id;
   int line;
   int col;

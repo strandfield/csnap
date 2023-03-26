@@ -14,6 +14,7 @@
 #include <libclang-utils/index-action.h>
 #include <libclang-utils/clang-cursor.h>
 
+#include <cassert>
 #include <filesystem>
 #include <iostream>
 
@@ -45,7 +46,7 @@ class TranslationUnitIndexer : public libclang::BasicIndexer
 {
 private:
   csnap::Indexer& indexer;
-  UsrMap usrs;
+  UsrMap usrs; // $TODO: build this local cache in the constructor
   AddressableIds<Symbol> m_symbols;
   AddressableIds<File> m_files;
 
@@ -62,7 +63,10 @@ public:
   void* enteredMainFile(const libclang::File& mainFile)
   {
     std::string path = mainFile.getFileName();
-    auto [rawptr, owningptr] = indexer.getOrCreateFile(path);
+    auto [rawptr, owningptr] = indexer.getFile(path);
+
+    // the file should already exist in the snapshot
+    assert(owningptr == nullptr);
 
     if (owningptr)
     {
@@ -70,7 +74,7 @@ public:
       result.files.push_back(std::move(owningptr));
     }
 
-    return m_files.create(rawptr->id);
+    return rawptr ? m_files.create(rawptr->id) : nullptr;
   }
 
   void* ppIncludedFile(const CXIdxIncludedFileInfo* inclFile)
@@ -83,16 +87,22 @@ public:
     // - the line number of the #include.
     // The id of the included file is returned by this function so that 
     // it can be attached to the file by libclang and later be retrieved using getClientData().
+    // Note that all calls to ppIncludedFile() seem to happen before any calls to 
+    // indexDeclaration() or indexEntityReference() so this function cannot be used 
+    // to know in which file "we currently are". 
 
     std::string path = indexer.libclangAPI().file(inclFile->file).getFileName();
 
-    auto [rawptr, owningptr] = indexer.getOrCreateFile(path);
+    auto [rawptr, owningptr] = indexer.getFile(path);
 
     if (owningptr)
     {
       rawptr = owningptr.get();
       result.files.push_back(std::move(owningptr));
     }
+
+    if (!rawptr)
+      return nullptr; // $TODO: we should find a way to log the include, for completeness
 
     FileLocation loc = getFileLocation(inclFile->hashLoc);
 
@@ -115,39 +125,18 @@ public:
 
   void indexDeclaration(const CXIdxDeclInfo* decl)
   {
-    std::string usr{ decl->entityInfo->USR };
+    FileLocation loc = getFileLocation(decl->loc);
 
-    SymbolId id = usrs.find(usr);
-
-    if (!id.valid())
+    if (!loc.client_data)
     {
-      // $TODO: maybe we should assign temporary ids to 
-      // the symbols and then rewrite the id when aggregating 
-      // the indexing results.
-      auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
-      id = uid;
-      // update local "cache"
-      usrs.insert(usr, id);
-
-      if (inserted)
-      {
-        std::unique_ptr<Symbol> sym = create_symbol(decl, id);
-
-        if (sym->kind == Whatsit::CXXClass)
-        {
-          list_bases(*sym, decl);
-        }
-
-        result.symbols.push_back(std::move(sym));
-      }
+      // the declaration belongs to a file that is skipped
+      return;
     }
-    else
-    {
-      if (decl->isDefinition || decl->isRedeclaration)
-      {
-        // $TODO: we may more accurately fill the Symbol struct here ?
-      }
-    }
+
+    SymbolId id = get_symbol_id(decl);
+
+    if (assert(id.valid()), !id.valid())
+      return;
 
     void* refid = m_symbols.create(id);
     setClientData(decl->declAsContainer, refid);
@@ -156,27 +145,28 @@ public:
 
   void indexEntityReference(const CXIdxEntityRefInfo* ref)
   {
-    SymbolId symid = m_symbols.get(getClientData(ref->referencedEntity));
+    FileLocation loc = getFileLocation(ref->loc);
 
-    if (!symid.valid())
+    if (!loc.client_data)
     {
-      // $TODO: what?
-      //std::string usr{ ref->referencedEntity->USR };
-      //usrs.find(usr);
-
+      // the entity reference belongs to a file that is skipped
       return;
     }
- 
-    FileLocation loc = getFileLocation(ref->loc);
-    FileId fileid = m_files.get(loc.client_data);
 
+    FileId fileid = m_files.get(loc.client_data);
+    assert(fileid.valid());
     if (!fileid.valid())
       return;
 
+    SymbolId symid = get_symbol_id(ref->referencedEntity);
+
+    if (assert(symid.valid()), !symid.valid())
+      return;
+
     SymbolReference symref;
+    symref.file_id = fileid.value();
     symref.col = loc.column;
     symref.line = loc.line;
-    symref.file_id = fileid.value();
     symref.symbol_id = symid.value();
     symref.flags = ref->role;
     result.references.push_back(symref);
@@ -184,22 +174,191 @@ public:
 
 protected:
 
+  SymbolId get_symbol_id(const CXIdxDeclInfo* decl)
+  {
+    std::string usr{ decl->entityInfo->USR };
+
+    SymbolId id = usrs.find(usr);
+
+    if (id.valid())
+    {
+      if (decl->isDefinition || decl->isRedeclaration)
+      {
+        // $TODO: we may more accurately fill the Symbol struct here ?
+      }
+
+      return id;
+    }
+
+    // $TODO: maybe we should assign temporary ids to 
+    // the symbols and then rewrite the id when aggregating 
+    // the indexing results.
+    auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
+    id = uid;
+    // update local "cache"
+    usrs.insert(usr, id);
+
+    if (!inserted)
+      return id;
+
+    // The SymbolId was just created, we need to create the corresponding Symbol struct.
+
+    std::unique_ptr<Symbol> sym = create_symbol(decl, id);
+
+    if (sym->kind == Whatsit::CXXClass)
+    {
+      list_bases(*sym, decl);
+    }
+
+    result.symbols.push_back(std::move(sym));
+
+    return id;
+  }
+
+  SymbolId get_symbol_id(const CXIdxEntityInfo* info)
+  {
+    SymbolId id = m_symbols.get(getClientData(info));
+
+    if (id.valid())
+      return id;
+
+    std::string usr{ info->USR };
+
+    id = usrs.find(usr);
+
+    if (id.valid())
+      return id;
+
+    auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
+    id = uid;
+    // update local "cache"
+    usrs.insert(usr, id);
+
+    if (!inserted)
+      return id;
+
+    // The SymbolId was just created, we need to create the corresponding Symbol struct.
+
+    std::unique_ptr<Symbol> sym = create_symbol(info, id);
+
+    result.symbols.push_back(std::move(sym));
+
+    return id;
+  }
+
+private:
+
+  SymbolId get_symbol_id(const libclang::Cursor& cursor)
+  {
+    if (cursor.isNull())
+      return SymbolId();
+
+    static const std::map<CXCursorKind, CXIdxEntityKind> dict = {
+      { CXCursor_TypedefDecl,        CXIdxEntity_Typedef },
+      { CXCursor_FunctionDecl,       CXIdxEntity_Function },
+      { CXCursor_VarDecl,            CXIdxEntity_Variable },
+      { CXCursor_EnumConstantDecl,   CXIdxEntity_EnumConstant },
+      { CXCursor_EnumDecl,           CXIdxEntity_Enum },
+      { CXCursor_StructDecl,         CXIdxEntity_Struct },
+      { CXCursor_UnionDecl,          CXIdxEntity_Union },
+      { CXCursor_ClassDecl,          CXIdxEntity_CXXClass },
+      { CXCursor_Namespace,          CXIdxEntity_CXXNamespace },
+      { CXCursor_NamespaceAlias,     CXIdxEntity_CXXNamespaceAlias },
+      { CXCursor_Constructor,        CXIdxEntity_CXXConstructor },
+      { CXCursor_Destructor,         CXIdxEntity_CXXDestructor },
+      { CXCursor_ConversionFunction, CXIdxEntity_CXXConversionFunction },
+      { CXCursor_TypeAliasDecl,      CXIdxEntity_CXXTypeAlias },
+    };
+
+    auto it = dict.find(cursor.kind());
+
+    if (it == dict.end())
+      return SymbolId();
+
+    std::string usr{ cursor.getUSR() };
+
+    if (usr.empty())
+      return SymbolId();
+
+    SymbolId id = usrs.find(usr);
+
+    if (id.valid())
+      return id;
+
+    auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
+    id = uid;
+    // update local "cache"
+    usrs.insert(usr, id);
+
+    if (!inserted)
+      return id;
+
+    // create symbol
+    std::unique_ptr<Symbol> sym = create_symbol(cursor, id, static_cast<Whatsit>(it->second));
+    result.symbols.push_back(std::move(sym));
+
+    return id;
+  }
+
+  SymbolId get_parent_symbol_id(const CXIdxEntityInfo* info)
+  {
+    libclang::Cursor c = libclangAPI().cursor(info->cursor);
+    c = c.getSemanticParent();
+    return get_symbol_id(c);
+  }
+
   const char* name(const CXIdxEntityInfo* entity)
   {
     return entity->name != nullptr ? entity->name : "";
   }
 
-  std::unique_ptr<Symbol> create_symbol(const CXIdxDeclInfo* decl, SymbolId id)
+  std::unique_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what, SymbolId parent_id)
   {
-    auto s = std::make_unique<Symbol>(static_cast<Whatsit>(decl->entityInfo->kind), name(decl->entityInfo));
-    s->id = SymbolId(id.value());
-    s->parent_id = m_symbols.get(getClientData(decl->semanticContainer));
-    s->display_name = libclangAPI().cursor(decl->entityInfo->cursor).getDisplayName();
-    s->usr = decl->entityInfo->USR;
+    auto s = std::make_unique<Symbol>(what, cursor.getSpelling());
+    s->display_name = cursor.getDisplayName();
+    s->usr = cursor.getUSR();
+
+    // $TODO: fill extra information depending on the kind of symbol
+
+    s->id = id;
+    s->parent_id = parent_id;
+
+    return s;
+  }
+
+  std::unique_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what)
+  {
+    SymbolId parent_id = get_symbol_id(cursor.getSemanticParent());
+    return create_symbol(cursor, id, what, parent_id);
+  }
+
+  std::unique_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id, SymbolId parent_id)
+  {
+    auto s = std::make_unique<Symbol>(static_cast<Whatsit>(info->kind), name(info));
+    s->display_name = libclangAPI().cursor(info->cursor).getDisplayName();
+    s->usr = info->USR;
+
+    s->id = id;
+    s->parent_id = parent_id;
 
     // $TODO: fill extra information depending on the kind of symbol
 
     return s;
+  }
+
+  std::unique_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id)
+  {
+    SymbolId parent_id = get_parent_symbol_id(info);
+    return create_symbol(info, id, parent_id);
+  }
+
+  std::unique_ptr<Symbol> create_symbol(const CXIdxDeclInfo* decl, SymbolId id)
+  {
+    SymbolId parent_id = m_symbols.get(getClientData(decl->semanticContainer));
+    if (parent_id.valid())
+      return create_symbol(decl->entityInfo, id, parent_id);
+    else
+      return create_symbol(decl->entityInfo, id);
   }
 
   void list_bases(const Symbol& symbol, const CXIdxDeclInfo* decl)
@@ -315,19 +474,23 @@ IndexerResultQueue& Indexer::results()
 }
 
 /**
- * \brief returns a pointer to a File, creating it if missing
+ * \brief returns a pointer to a File matching the given path
+ * \param path the path of the file
+ * 
+ * If the file currently does not exist in the snapshot and \a collect_new_files 
+ * is true, a new File object is created ; otherwise, this function returns nullptr.
  * 
  * This function returns a pair of pointers, a non-owning and an owning one;
  * only one of which is not null, depending on whether a File object was 
  * actually created by this call.
  */
-std::pair<File*, std::unique_ptr<File>> Indexer::getOrCreateFile(std::string path)
+std::pair<File*, std::unique_ptr<File>> Indexer::getFile(std::string path)
 {
   // $TODO: make thread-safe
 
   File* f = snapshot().findFile(path);
 
-  if (f)
+  if (f || !collect_new_files)
     return { f, nullptr };
 
   f = new File;

@@ -80,9 +80,12 @@ public:
 
   IndexerResultQueue& results();
 
-  std::pair<File*, std::unique_ptr<File>> getOrCreateFile(std::string path);
+  std::pair<File*, std::unique_ptr<File>> getFile(std::string path);
 
   GlobalUsrMap& sharedUsrMap();
+
+public:
+  bool collect_new_files = false;
 
 private:
   libclang::Index& m_index;
