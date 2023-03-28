@@ -142,6 +142,30 @@ public:
     void* refid = m_symbols.create(id);
     setClientData(decl->declAsContainer, refid);
     setClientData(decl->entityInfo, refid);
+
+    // It seems indexEntityReference() is not called for declaration despite the 
+    // CXSymbolRole enum suggesting it could; so we create the reference manually here.
+    {
+      FileId fileid = m_files.get(loc.client_data);
+      assert(fileid.valid());
+      if (!fileid.valid())
+        return;
+
+      SymbolReference symref;
+      symref.file_id = fileid.value();
+      symref.col = loc.column;
+      symref.line = loc.line;
+      symref.symbol_id = id.value();
+
+      symref.flags = decl->isDefinition ? CXSymbolRole_Definition : CXSymbolRole_Declaration;
+
+      if (decl->isImplicit)
+        symref.flags |= CXSymbolRole_Implicit;
+
+      symref.parent_symbol_id = m_symbols.get(getClientData(decl->semanticContainer));
+
+      result.references.push_back(symref);
+    }
   }
 
   void indexEntityReference(const CXIdxEntityRefInfo* ref)

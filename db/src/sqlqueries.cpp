@@ -132,6 +132,10 @@ CREATE TABLE IF NOT EXISTS "base" (
 
 );
 
+CREATE VIEW symboldefinition (symbol_id, file_id, line, col, flags) AS
+  SELECT symbol_id, file_id, line, col, flags
+  FROM symbolreference WHERE flags & 2;
+
 COMMIT;
 )";
 
