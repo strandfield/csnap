@@ -25,6 +25,21 @@ void UsrMap::insert(const std::string& usr, SymbolId id)
   m_map[usr] = id;
 }
 
+/**
+ * \brief returns a copy of this usr map
+ */
+UsrMap GlobalUsrMap::clone()
+{
+  UsrMap copy;
+
+  {
+    std::lock_guard lock{ mutex() };
+    copy = usrMap();
+  }
+
+  return copy;
+}
+
 std::pair<SymbolId, bool> GlobalUsrMap::get(const std::string& usr)
 {
   std::lock_guard lock{ mutex() };

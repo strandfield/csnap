@@ -46,7 +46,7 @@ class TranslationUnitIndexer : public libclang::BasicIndexer
 {
 private:
   csnap::Indexer& indexer;
-  UsrMap usrs; // $TODO: build this local cache in the constructor
+  UsrMap usrs;
   AddressableIds<Symbol> m_symbols;
   AddressableIds<File> m_files;
 
@@ -55,7 +55,8 @@ public:
 
 public:
   TranslationUnitIndexer(csnap::Indexer& idx, TranslationUnit* tu) : libclang::BasicIndexer(idx.libclangAPI()),
-    indexer(idx)
+    indexer(idx),
+    usrs(idx.sharedUsrMap().clone())
   {
     result.source = tu;
   }
@@ -316,13 +317,18 @@ private:
     return entity->name != nullptr ? entity->name : "";
   }
 
+  void fill_symbol(Symbol& s, const libclang::Cursor& c)
+  {
+    // $TODO: fill extra information depending on the kind of symbol
+  }
+
   std::unique_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what, SymbolId parent_id)
   {
     auto s = std::make_unique<Symbol>(what, cursor.getSpelling());
     s->display_name = cursor.getDisplayName();
     s->usr = cursor.getUSR();
 
-    // $TODO: fill extra information depending on the kind of symbol
+    fill_symbol(*s, cursor);
 
     s->id = id;
     s->parent_id = parent_id;
@@ -345,7 +351,7 @@ private:
     s->id = id;
     s->parent_id = parent_id;
 
-    // $TODO: fill extra information depending on the kind of symbol
+    fill_symbol(*s, libclangAPI().cursor(info->cursor));
 
     return s;
   }
