@@ -7,6 +7,7 @@
 #include "csnap/database/snapshot.h"
 
 #include <algorithm>
+#include <iostream>
 
 namespace csnap
 {
@@ -58,15 +59,23 @@ void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
       if (it->second.num_references != nb_refs)
       {
         // Mismatch, we need to compare to see the difference.
-        // (this branche should be unlikely to happen)
+        // (this branch should be unlikely to happen)
         std::vector<SymbolReference> refsinfile = snapshot().listReferencesInFile(FileId(current_file_id));
+
         auto already_exists = [&refsinfile](const SymbolReference& r) {
           return std::find(refsinfile.begin(), refsinfile.end(), r) != refsinfile.end();
         };
-        auto newend = std::remove_if(begin, end, already_exists);
-        end = references.erase(newend, end);
 
-        it->second.num_references += std::distance(begin, end);
+        auto newend = std::remove_if(begin, end, already_exists);
+        size_t remaining = std::distance(begin, newend);
+
+        if (newend != end)
+        {
+          //std::cout << "erasing " << std::distance(newend, end) << " already existing references" << std::endl;
+          end = references.erase(newend, end);
+        }
+
+        it->second.num_references += remaining;
       }
       else
       {
@@ -77,7 +86,7 @@ void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
 
     begin = end;
 
-  } while (end != references.end());
+  } while (begin != references.end());
 
 }
 

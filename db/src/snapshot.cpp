@@ -6,6 +6,7 @@
 
 #include "sql.h"
 #include "sqlqueries.h"
+#include "symbolloader.h"
 #include "transaction.h"
 
 #include <algorithm>
@@ -85,7 +86,7 @@ Snapshot::Snapshot(Database db) :
 
 }
 
-const Database& Snapshot::database() const
+Database& Snapshot::database() const
 {
   return *m_database;
 }
@@ -201,6 +202,30 @@ void Snapshot::addFilesContent()
   insert_file_content(*m_database, files().all());
 }
 
+std::shared_ptr<FileContent> Snapshot::getFileContent(FileId f)
+{
+  std::shared_ptr<FileContent> result = m_filecontent_cache.find(f);
+
+  if (result)
+    return result;
+
+  File* file = files().get(f);
+
+  if (!file)
+    return nullptr;
+
+  std::string content = select_content_from_file(*m_database, f);
+
+  if (content.empty())
+    return nullptr;
+
+  result = std::make_shared<FileContent>(file, std::move(content));
+
+  m_filecontent_cache.insert(result);
+
+  return result;
+}
+
 void Snapshot::addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts)
 {
   auto optsptr = std::make_shared<program::CompileOptions>(opts);
@@ -250,12 +275,73 @@ void Snapshot::addIncludes(const std::vector<Include>& includes, TranslationUnit
   list.insert(list.end(), includes.begin(), includes.end());
 }
 
+/**
+ * \brief returns the list of files included in a given file
+ * \param f the id of the file which #include are listed
+ */
+std::vector<Include> Snapshot::listIncludesInFile(FileId f) const
+{
+  return select_from_include(*m_database, f, FileId());
+}
+
+/**
+ * \brief returns the list of files in which a file is included
+ * \param f the id of the file that is included
+ */
+std::vector<Include> Snapshot::findWhereFileIsIncluded(FileId f) const
+{
+  return select_from_include(*m_database, FileId(), f);
+}
+
 void Snapshot::addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols)
 {
   auto& pending_list = pendingData().symbols;
   pending_list.insert(pending_list.end(), symbols.begin(), symbols.end());
 
   symbolCache().insert(symbols.begin(), symbols.end());
+}
+
+/**
+ * \brief retrieves a list of symbols
+ * \param ids  the ids of the symbol to retrieve
+ * 
+ * If the requested symbols are no in the cache, they are loaded from the database.
+ */
+std::map<SymbolId, std::shared_ptr<Symbol>> Snapshot::loadSymbols(const std::set<SymbolId>& ids)
+{
+  std::map<SymbolId, std::shared_ptr<Symbol>> r;
+  loadSymbols(ids, r);
+  return r;
+}
+
+/**
+ * \brief retrieves a list of symbols
+ * \param ids     ids of the symbol to retrieve
+ * \param outmap  the output map in which the results are written
+ * \return the pair (number of symbol loaded from the database, number of symbol found in the cache)
+ */
+std::pair<size_t, size_t> Snapshot::loadSymbols(const std::set<SymbolId>& ids, std::map<SymbolId, std::shared_ptr<Symbol>>& outmap)
+{
+  SymbolLoader loader{ *m_database };
+
+  size_t loaded = 0;
+  size_t cache = 0;
+
+  for (SymbolId id : ids)
+  {
+    if (std::shared_ptr<Symbol> symbol = symbolCache().find(id))
+    {
+      ++cache;
+      outmap[symbol->id] = symbol;
+    }
+    else if(loader.read(id))
+    {
+      ++loaded;
+      outmap[id] = std::make_shared<Symbol>(std::move(loader.symbol));
+    }
+  }
+
+  return std::make_pair(loaded, cache);
 }
 
 void Snapshot::addSymbolReferences(const std::vector<SymbolReference>& list)

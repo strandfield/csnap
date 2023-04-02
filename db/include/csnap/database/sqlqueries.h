@@ -36,6 +36,7 @@ void insert_info(Database& db, const std::string& key, const std::string& value)
 std::string select_info(Database& db, const std::string& key);
 
 std::vector<SymbolReference> select_symbolreference(Database& db, FileId file);
+std::vector<SymbolReference> select_symboldefinition(Database& db);
 
 void insert_file(Database& db, const File& file);
 void insert_file_content(Database& db, const std::vector<File*>& files);
@@ -49,8 +50,11 @@ void insert_symbol_references(Database& db, const std::vector<SymbolReference>& 
 void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>& bases);
 
 std::vector<File> select_file(Database& db);
+std::string select_content_from_file(Database& db, FileId file);
 std::map<int, std::shared_ptr<program::CompileOptions>> select_compileoptions(Database& db);
 std::vector<TranslationUnit> select_translationunit(Database& db);
+
+std::vector<Include> select_from_include(Database& db, FileId file_id = {}, FileId included_file_id = {});
 
 } // namespace csnap
 

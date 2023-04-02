@@ -215,6 +215,41 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file)
   return r;
 }
 
+/**
+ * \brief select all rows from the symboldefinition table
+ * 
+ * Note: currently the \em parent_symbol_id field of the SymbolReference 
+ * struct is not filled.
+ */
+std::vector<SymbolReference> select_symboldefinition(Database& db)
+{
+  // $TODO: this could be rewritten using read_vector()
+
+  std::vector<SymbolReference> r;
+
+  sql::Statement stmt{ db, "SELECT symbol_id, file_id, line, col, flags FROM symboldefinition" };
+
+  while (stmt.step())
+  {
+    SymbolReference symref;
+    symref.symbol_id = stmt.columnInt(0);
+    symref.file_id = stmt.columnInt(1);
+    symref.line = stmt.columnInt(2);
+    symref.col = stmt.columnInt(3);
+    symref.flags = stmt.columnInt(4);
+
+    /*
+    if (stmt.nullColumn(4))
+      symref.parent_symbol_id = SymbolId();
+    else
+      symref.parent_symbol_id = SymbolId(stmt.columnInt(3));
+*/
+    r.push_back(symref);
+  }
+
+  return r;
+}
+
 void insert_file(Database& db, const File& file)
 {
   sql::Statement stmt{ db, "INSERT INTO file(id, path) VALUES(?,?)" };
@@ -529,6 +564,20 @@ std::vector<File> select_file(Database& db)
     });
 }
 
+std::string select_content_from_file(Database& db, FileId file)
+{
+  sql::Statement stmt{ db, "SELECT content FROM file WHERE id = ?" };
+  stmt.bind(1, file.value());
+
+  if (!stmt.step())
+    return {};
+
+  if (stmt.nullColumn(0))
+    return {};
+  else
+    return stmt.column(0);
+}
+
 template<typename F>
 static void split_apply(const std::string& liststr, char sep, F&& func)
 {
@@ -615,6 +664,42 @@ std::vector<TranslationUnit> select_translationunit(Database& db)
     tu.sourcefile_id = FileId(stmt.columnInt(1));
     tu.compile_options = copts[stmt.columnInt(2)];
     return tu;
+    });
+}
+
+/**
+ * \brief select rows from the include table
+ * \param file_id           filter with respect to the file_id column
+ * \param included_file_id  filter with respect to the included_file_id column
+ * 
+ * You can pass invalid file ids to this function, in which case no filtering will 
+ * be applied to the column.
+ * 
+ * Example:
+ * \code{.cpp}
+ *   // Get all the files included by 'myfile':
+ *   select_from_include(database, myfile, FileId());
+ * // Get all the files that include by 'myfile':
+ *   select_from_include(database, FileId(), myfile)
+ * \endcode
+ */
+std::vector<Include> select_from_include(Database& db, FileId file_id, FileId included_file_id)
+{
+  std::map<int, std::shared_ptr<program::CompileOptions>> copts = select_compileoptions(db);
+
+  sql::Statement stmt{ db, 
+    "SELECT file_id, line, included_file_id FROM include "
+    "WHERE (file_id = ?1 OR ?1 = -1) AND (included_file_id = ?2 OR ?2 = -1)"};
+
+  stmt.bind(1, file_id.value());
+  stmt.bind(2, included_file_id.value());
+
+  return read_vector<Include>(stmt, [](sql::Statement& stmt) {
+    Include r;
+    r.file_id = FileId(stmt.columnInt(0));
+    r.line = stmt.columnInt(1);
+    r.included_file_id = FileId(stmt.columnInt(2));
+    return r;
     });
 }
 

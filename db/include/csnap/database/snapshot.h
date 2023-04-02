@@ -7,6 +7,7 @@
 
 #include "database.h"
 
+#include "csnap/model/filecontentcache.h"
 #include "csnap/model/filelist.h"
 #include "csnap/model/include.h"
 #include "csnap/model/translationunitlist.h"
@@ -14,6 +15,7 @@
 #include "csnap/model/symbolcache.h"
 
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <utility>
 
@@ -32,7 +34,7 @@ public:
 
   explicit Snapshot(Database db);
 
-  const Database& database() const;
+  Database& database() const;
 
   static Snapshot open(const std::filesystem::path& p);
   static Snapshot create(const std::filesystem::path& p);
@@ -50,6 +52,7 @@ public:
   File* findFile(const std::string& path) const;
   const FileList& files() const;
   void addFilesContent();
+  std::shared_ptr<FileContent> getFileContent(FileId f);
 
   void addTranslationUnits(const std::vector<FileId>& file_ids, program::CompileOptions opts);
   TranslationUnit* findTranslationUnit(File* file) const;
@@ -58,8 +61,12 @@ public:
   void addTranslationUnitSerializedAst(TranslationUnit* tu, const std::filesystem::path& astfile);
 
   void addIncludes(const std::vector<Include>& includes, TranslationUnit* tu = nullptr);
+  std::vector<Include> listIncludesInFile(FileId f) const;
+  std::vector<Include> findWhereFileIsIncluded(FileId f) const;
 
   void addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols);
+  std::map<SymbolId, std::shared_ptr<Symbol>> loadSymbols(const std::set<SymbolId>& ids);
+  std::pair<size_t, size_t> loadSymbols(const std::set<SymbolId>& ids, std::map<SymbolId, std::shared_ptr<Symbol>>& outmap);
   SymbolCache& symbolCache();
 
   void addBases(SymbolId symid, const std::vector<BaseClass>& bases);
@@ -77,6 +84,7 @@ private:
   std::unique_ptr<Database> m_database;
   FileList m_files; // $TODO: add a class that will generate ids for files, see also getFile() in class Indexer
   TranslationUnitList m_translationunits;
+  FileContentCache m_filecontent_cache;
   SymbolCache m_symbol_cache;
   std::unique_ptr<PendingData> m_pending_data;
 };

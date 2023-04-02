@@ -63,7 +63,7 @@ const std::string& whatsit2string(Whatsit w);
 struct Symbol
 {
   SymbolId id;
-  Whatsit kind;
+  Whatsit kind = Whatsit::Unexposed;
   std::string name;
   std::string usr;
   std::string display_name;
@@ -94,6 +94,7 @@ struct Symbol
   };
 
 public:
+  Symbol() = default;
   explicit Symbol(Whatsit w, std::string name, Symbol* parent = nullptr);
 
 };

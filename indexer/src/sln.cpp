@@ -12,6 +12,8 @@
 #include <vcxproj/solution.h>
 #include <vcxproj/utils.h>
 
+#include <iostream>
+
 namespace csnap
 {
 
@@ -35,6 +37,16 @@ static void listTranslationUnits(Snapshot& ss, const vcxproj::Solution& solution
 {
   for (const vcxproj::Project& p : solution.projects)
   {
+    if (p.itemDefinitionGroupList.empty())
+    {
+      if (!p.compileList.empty())
+      {
+        std::cout << "Sln-Warning: project '" << p.name << "' empty itemDefinitionGroupListbut non-empty compileList" << std::endl;
+      }
+
+      continue;
+    }
+
     program::CompileOptions params;
 
     const vcxproj::ItemDefinitionGroup& idg = p.itemDefinitionGroupList.back();

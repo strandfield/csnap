@@ -36,6 +36,7 @@ endif()
 add_subdirectory(model)
 add_subdirectory(db)
 add_subdirectory(indexer)
+add_subdirectory(exporter)
 
 ##################################################################
 ###### app

@@ -118,7 +118,7 @@ public:
     }
     else
     {
-      std::cerr << "oups" << std::endl;
+      std::cerr << "could not get id for " << libclangAPI().file(loc.file).getFileName() << std::endl;
     }
 
     return m_files.create(rawptr->id);
@@ -214,6 +214,11 @@ protected:
       if (decl->isDefinition || decl->isRedeclaration)
       {
         // $TODO: we may more accurately fill the Symbol struct here ?
+
+        if (decl->isDefinition && decl->entityInfo->kind == CXIdxEntity_CXXClass)
+        {
+          list_bases(id, decl);
+        }
       }
 
       return id;
@@ -395,7 +400,7 @@ private:
       return create_symbol(decl->entityInfo, id);
   }
 
-  void list_bases(const Symbol& symbol, const CXIdxDeclInfo* decl)
+  void list_bases(SymbolId symbol_id, const CXIdxDeclInfo* decl)
   {
     const CXIdxCXXClassDeclInfo* classdecl = getCXXClassDeclInfo(decl);
 
@@ -407,7 +412,7 @@ private:
     for (unsigned int i(0); i < classdecl->numBases; ++i)
     {
       const CXIdxBaseClassInfo* base = classdecl->bases[i];
-      
+
       SymbolId symid = m_symbols.get(getClientData(base->base));
 
       if (!symid.valid())
@@ -422,7 +427,15 @@ private:
       bases.push_back(b);
     }
 
-    result.bases[symbol.id] = std::move(bases);
+    if (!bases.empty())
+    {
+      result.bases[symbol_id] = std::move(bases);
+    }
+  }
+
+  void list_bases(const Symbol& symbol, const CXIdxDeclInfo* decl)
+  {
+    list_bases(symbol.id, decl);
   }
 };
 
