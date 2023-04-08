@@ -35,6 +35,7 @@ const char* db_init_statements();
 void insert_info(Database& db, const std::string& key, const std::string& value);
 std::string select_info(Database& db, const std::string& key);
 
+std::vector<SymbolReference> select_from_symbolreference(Database& db, SymbolId symbol);
 std::vector<SymbolReference> select_symbolreference(Database& db, FileId file);
 std::vector<SymbolReference> select_symboldefinition(Database& db);
 

@@ -8,6 +8,7 @@
 #include "definitiontable.h"
 #include "filesema.h"
 #include "iterator.h"
+#include "pathresolver.h"
 
 #include <csnap/model/filecontent.h>
 #include <csnap/model/filelist.h>
@@ -25,16 +26,6 @@ class XmlWriter;
 
 namespace csnap
 {
-
-class PathResolver
-{
-public:
-  virtual ~PathResolver();
-
-  static std::string relpath(const std::string& source, const std::string& target);
-
-  virtual std::filesystem::path filePath(const File& f) const;
-};
 
 class SourceHighlighter
 {
@@ -60,8 +51,8 @@ protected:
   FileSema sema;
   const FileList& files;
   const SymbolMap& symbols;
-  const DefinitionTable& definitions;
-  std::filesystem::path m_file_path;
+  const DefinitionTable& definitions; // $TODO: make optional, only makes sense if we way to link to other pages
+  std::filesystem::path m_file_path; // $TODO: group in a class with path resolver (e.g. SymbolLinks), make optional
   cpptok::Tokenizer lexer;
   int m_current_line = -1;
   std::unique_ptr<SemaIterators> current_line_sema;

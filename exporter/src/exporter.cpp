@@ -5,10 +5,12 @@
 #include "exporter.h"
 
 #include "filebrowser.h"
+#include "symbolpage.h"
 #include "writefile.h"
 #include "xmlwriter.h"
 
 #include "csnap/database/sqlqueries.h"
+#include "csnap/database/symbolloader.h"
 
 #include <fstream>
 #include <set>
@@ -68,6 +70,21 @@ void export_html(Snapshot& snapshot, File& file, const std::filesystem::path& ou
   write_file(outputdir / outputpath, outstrstream.str());
 }
 
+static void export_symbol(Snapshot& snapshot, const Symbol& symbol, const std::filesystem::path& outputdir, const std::filesystem::path& outputpath, PathResolver& pathresolver)
+{
+  std::stringstream outstrstream;
+  XmlWriter xml{ outstrstream };
+
+  HtmlPage page{ outputpath, xml };
+  SymbolPageGenerator pagegen{ page, snapshot, symbol };
+
+  pagegen.setPathResolver(pathresolver);
+
+  pagegen.writePage();
+
+  write_file(outputdir / outputpath, outstrstream.str());
+}
+
 class SnapshotExporterHtmlPathResolver : public PathResolver
 {
 public:
@@ -120,6 +137,24 @@ void SnapshotExporter::run()
     File* f = files.at(i);
     std::cout << "[" << (i+1) << "/" << files.size() << "] " << f->path << std::endl;
     export_html(snapshot, *f, outputdir, pathresolver.filePath(*f), defs, pathresolver);
+  }
+
+  writeSymbolPages();
+}
+
+void SnapshotExporter::writeSymbolPages()
+{
+  SymbolEnumerator symenumerator{ snapshot.database() };
+
+  while (symenumerator.next())
+  {
+    const Symbol& symbol = symenumerator.symbol;
+   
+    std::cout << symbol.display_name << std::endl;
+
+    SnapshotExporterHtmlPathResolver pathresolver;
+    std::string outputpath = "symbols/" + std::to_string(symbol.id.value()) + ".html";
+    export_symbol(snapshot, symbol, outputdir, outputpath, pathresolver);
   }
 }
 

@@ -139,6 +139,19 @@ CREATE VIEW symboldefinition (symbol_id, file_id, line, col, flags) AS
 COMMIT;
 )";
 
+template<typename T, typename F>
+std::vector<T> read_vector(sql::Statement& stmt, F&& func)
+{
+  std::vector<T> r;
+
+  while (stmt.step())
+  {
+    r.push_back(func(stmt));
+  }
+
+  return r;
+}
+
 const char* db_init_statements()
 {
   return SQL_CREATE_STATEMENTS;
@@ -180,6 +193,30 @@ std::string select_info(Database& db, const std::string& key)
   sqlite3_finalize(stmt);
 
   return result;
+}
+
+std::vector<SymbolReference> select_from_symbolreference(Database& db, SymbolId symbol)
+{
+  sql::Statement stmt{ db, "SELECT file_id, line, col, parent_symbol_id, flags FROM symbolreference WHERE symbol_id = ?" };
+
+  stmt.bind(1, symbol.value());
+
+  return read_vector<SymbolReference>(stmt, [&symbol](sql::Statement& stmt) {
+    SymbolReference symref;
+    symref.file_id = stmt.columnInt(0);
+    symref.symbol_id = symbol.value();
+    symref.line = stmt.columnInt(1);
+    symref.col = stmt.columnInt(2);
+
+    if (stmt.nullColumn(3))
+      symref.parent_symbol_id = SymbolId();
+    else
+      symref.parent_symbol_id = SymbolId(stmt.columnInt(3));
+
+    symref.flags = stmt.columnInt(4);
+
+    return symref;
+    });
 }
 
 /**
@@ -533,19 +570,6 @@ void insert_base(Database& db, const std::map<SymbolId, std::vector<BaseClass>>&
   }
 
   query.finalize();
-}
-
-template<typename T, typename F>
-std::vector<T> read_vector(sql::Statement& stmt, F&& func)
-{
-  std::vector<T> r;
-
-  while (stmt.step())
-  {
-    r.push_back(func(stmt));
-  }
-
-  return r;
 }
 
 File read_file(sql::Statement& stmt, int id_col = 0, int path_col = 1)

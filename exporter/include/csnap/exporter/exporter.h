@@ -24,6 +24,9 @@ public:
 
   void run();
 
+
+protected:
+  void writeSymbolPages();
 };
 
 } // namespace csnap

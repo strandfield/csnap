@@ -27,6 +27,21 @@ public:
   bool read(SymbolId id);
 };
 
+class SymbolEnumerator
+{
+public:
+  Database& database;
+  Symbol symbol;
+
+protected:
+  sql::Statement m_query;
+
+public:
+  explicit SymbolEnumerator(Database& db);
+
+  bool next();
+};
+
 } // namespace csnap
 
 #endif // CSNAP_SYMBOLLOADER_H

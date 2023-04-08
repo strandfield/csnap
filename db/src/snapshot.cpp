@@ -350,6 +350,11 @@ void Snapshot::addSymbolReferences(const std::vector<SymbolReference>& list)
   pending_list.insert(pending_list.end(), list.begin(), list.end());
 }
 
+std::vector<SymbolReference> Snapshot::listReferences(SymbolId symbol)
+{
+  return select_from_symbolreference(*m_database, symbol);
+}
+
 std::vector<SymbolReference> Snapshot::listReferencesInFile(FileId file)
 {
   return select_symbolreference(*m_database, file);

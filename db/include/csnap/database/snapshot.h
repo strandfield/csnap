@@ -72,6 +72,7 @@ public:
   void addBases(SymbolId symid, const std::vector<BaseClass>& bases);
 
   void addSymbolReferences(const std::vector<SymbolReference>& list);
+  std::vector<SymbolReference> listReferences(SymbolId symbol);
   std::vector<SymbolReference> listReferencesInFile(FileId file);
 
   bool hasPendingData() const;
