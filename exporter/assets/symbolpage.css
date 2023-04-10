@@ -1,0 +1,16 @@
+
+@import "code.css";
+
+.use {
+   display: flex;
+}
+
+.ln {
+  width: 3em;
+  text-align: right;
+  margin-right: 0.5em;
+}
+
+.code {
+  white-space: pre;
+}

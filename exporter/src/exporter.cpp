@@ -153,7 +153,7 @@ void SnapshotExporter::writeSymbolPages()
     std::cout << symbol.display_name << std::endl;
 
     SnapshotExporterHtmlPathResolver pathresolver;
-    std::string outputpath = "symbols/" + std::to_string(symbol.id.value()) + ".html";
+    std::string outputpath = "symbols/" + std::to_string(symbol.id.value()) + "." + symbol.name + ".html";
     export_symbol(snapshot, symbol, outputdir, outputpath, pathresolver);
   }
 }

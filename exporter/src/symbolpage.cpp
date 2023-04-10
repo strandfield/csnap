@@ -67,7 +67,7 @@ void SymbolPageGenerator::writePage()
       link.attr("id", "codestylesheet");
       link.attr("rel", "stylesheet");
       link.attr("type", "text/css");
-      link.attr("href", page.url().pathToRoot() + "syntax.qtcreator.css");
+      link.attr("href", page.url().pathToRoot() + "symbolpage.css");
     }
   }
 
@@ -199,6 +199,11 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
   if (!f)
     return;
 
+  std::shared_ptr<FileContent> content = snapshot.getFileContent(f->id);
+
+  if (!content)
+    return;
+
   page.xml.writeStartElement("h3");
 
   page.xml.writeCharacters(f->path);
@@ -218,24 +223,37 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
     page.xml.writeEndElement();
   }*/
 
-  page.xml.writeStartElement("ul");
-
   for (auto it = begin; it != end; ++it)
   {
     const SymbolReference& ref = *it;
 
-    page.xml.writeStartElement("li");
+    page.xml.writeStartElement("div");
+    page.xml.writeAttribute("class", "use");
+
     {
-      page.xml.writeStartElement("a");
-      page.xml.writeAttribute("href", page.links().linkTo(*f, ref.line));
-      page.xml.writeCharacters("L");
-      page.xml.writeCharacters(std::to_string(ref.line));
+      page.xml.writeStartElement("div");
+      page.xml.writeAttribute("class", "ln");
+
+      {
+        page.xml.writeStartElement("a");
+        page.xml.writeAttribute("href", page.links().linkTo(*f, ref.line));
+        page.xml.writeCharacters(std::to_string(ref.line));
+        page.xml.writeEndElement();
+      }
+
+      page.xml.writeEndElement();
+
+      page.xml.writeStartElement("div");
+      page.xml.writeAttribute("class", "code");
+
+      {
+        page.xml.writeCharacters(std::string(content->lines.at(ref.line - 1)));
+      }
+
       page.xml.writeEndElement();
     }
     page.xml.writeEndElement();
   }
-
-  page.xml.writeEndElement();
 }
 
 } // namespace csnap
