@@ -426,11 +426,11 @@ static void advance_reference(SourceHighlighter::ReferenceIterator& iterator)
 
   // Should be simply,
   ++iterator;
-  // but it doesn't work as some references appear at the same column 
-  // (for reasons I don't understand yet; they should be implicit and automatically removed)
+  // in case it doesn't work (for some reasons), uncomment the following lines:
 
-  while (!iterator.atend() && (*iterator).col == col)
-    ++iterator;
+ /* while (!iterator.atend() && (*iterator).col == col)
+    ++iterator;*/
+  (void)col;
 }
 
 void SourceHighlighter::writeTokens(size_t& col, TokenIterator& tokit, SemaIterators& sema)

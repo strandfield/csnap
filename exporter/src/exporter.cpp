@@ -56,7 +56,7 @@ void export_html(Snapshot& snapshot, File& file, const std::filesystem::path& ou
     snapshot.loadSymbols(ids, symbols);
   }
 
-  remove_constructors_class_reference(sema.references, symbols);
+  simplify_ctor_and_class_references(sema.references, symbols);
 
   std::stringstream outstrstream;
   XmlWriter xml{ outstrstream };

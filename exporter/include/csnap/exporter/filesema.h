@@ -56,7 +56,7 @@ inline void remove_implicit_references(std::vector<SymbolReference>& refs)
   refs.erase(it, refs.end());
 }
 
-void remove_constructors_class_reference(std::vector<SymbolReference>& refs, const std::map<SymbolId, std::shared_ptr<Symbol>>& symbols);
+void simplify_ctor_and_class_references(std::vector<SymbolReference>& refs, const std::map<SymbolId, std::shared_ptr<Symbol>>& symbols);
 
 } // namespace csnap
 
