@@ -4,7 +4,7 @@
 
 #include "sourcehighlighter.h"
 
-#include "xmlwriter.h"
+#include "htmlpage.h"
 
 #include <csnap/database/snapshot.h>
 
@@ -48,54 +48,15 @@ static std::string get_symbol_symrefs_filename(const Symbol& sym)
   return r;
 }
 
-SourceHighlighter::SourceHighlighter(XmlWriter& xmlstream, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs) :
-  m_default_path_resolver(),
-  m_path_resolver(&m_default_path_resolver),
-  xml(xmlstream),
+SourceHighlighter::SourceHighlighter(HtmlPage& p, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs) :
+  page(p),
   content(fc),
   sema(std::move(fm)),
   files(fs),
   symbols(ss),
-  definitions(defs),
-  m_file_path(sema.file->path)
+  definitions(defs)
 {
 
-}
-
-std::string SourceHighlighter::rootPath() const
-{
-  std::string path = filePath().generic_string();
-  size_t nbdir = std::count(path.begin(), path.end(), '/');
-
-  std::string r;
-  r.reserve(nbdir * 3);
-
-  while (nbdir--)
-  {
-    r.append("../");
-  }
-
-  return r;
-}
-
-const std::filesystem::path& SourceHighlighter::filePath() const
-{
-  return m_file_path;
-}
-
-void SourceHighlighter::setFilePath(const std::filesystem::path& fp)
-{
-  m_file_path = fp;
-}
-
-PathResolver& SourceHighlighter::pathResolver() const
-{
-  return *m_path_resolver;
-}
-
-void SourceHighlighter::setPathResolver(PathResolver& resolver)
-{
-  m_path_resolver = &resolver;
 }
 
 std::string SourceHighlighter::symbol_symref(const Symbol& sym)
@@ -186,9 +147,7 @@ const std::string_view& SourceHighlighter::currentText() const
 
 std::string SourceHighlighter::pathHref(const std::filesystem::path& p) const
 {
-  std::filesystem::path current_dir = filePath().parent_path();
-  std::filesystem::path relpath = std::filesystem::relative(p, current_dir);
-  return relpath.generic_u8string();
+  return page.linkTo(p);
 }
 
 std::string SourceHighlighter::tagFromKeyword(const std::string& kw)
@@ -293,7 +252,7 @@ void SourceHighlighter::insertPrecedingSpaces(std::string_view txt, size_t& col,
   while (col < tokcol)
   {
     ++col;
-    xml.writeCharacters(" ");
+    page.xml.writeCharacters(" ");
   }
 }
 
@@ -305,44 +264,44 @@ void SourceHighlighter::writeToken(size_t& col, const cpptok::Token& tok)
   {
     std::string tag = tagFromKeyword(txt);
 
-    xml.writeStartElement(tag);
-    xml.writeCharacters(txt);
-    xml.writeEndElement();
+    page.xml.writeStartElement(tag);
+    page.xml.writeCharacters(txt);
+    page.xml.writeEndElement();
   }
   else if (tok.isIdentifier() || tok.isOperator() || tok.isPunctuator())
   {
-    xml.writeCharacters(txt);
+    page.xml.writeCharacters(txt);
   }
   else if (tok.isComment())
   {
-    xml.writeStartElement("i");
-    xml.writeCharacters(txt);
-    xml.writeEndElement();
+    page.xml.writeStartElement("i");
+    page.xml.writeCharacters(txt);
+    page.xml.writeEndElement();
   }
   else if (tok.type() == cpptok::TokenType::Preproc)
   {
-    xml.writeStartElement("u");
-    xml.writeCharacters(txt);
-    xml.writeEndElement();
+    page.xml.writeStartElement("u");
+    page.xml.writeCharacters(txt);
+    page.xml.writeEndElement();
   }
   else if (tok.type() == cpptok::TokenType::Include)
   {
-    xml.writeStartElement("span");
+    page.xml.writeStartElement("span");
 
-    xml.writeAttribute("class", "include");
-    xml.writeCharacters(txt);
+    page.xml.writeAttribute("class", "include");
+    page.xml.writeCharacters(txt);
 
-    xml.writeEndElement();
+    page.xml.writeEndElement();
   }
   else if (tok.isLiteral())
   {
-    xml.writeStartElement("var");
-    xml.writeCharacters(txt);
-    xml.writeEndElement();
+    page.xml.writeStartElement("var");
+    page.xml.writeCharacters(txt);
+    page.xml.writeEndElement();
   }
   else
   {
-    xml.writeCharacters(txt);
+    page.xml.writeCharacters(txt);
   }
 
   col += static_cast<int>(tok.text().length());
@@ -368,31 +327,29 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, I
 {
   const File* incfile = files.get((*inclit).included_file_id);
 
-  if (!incfile)
+  if (!incfile || !page.links())
   {
-    xml.writeStartElement("span");
+    page.xml.writeStartElement("span");
 
-    xml.writeAttribute("class", "include");
+    page.xml.writeAttribute("class", "include");
 
     writeToken(col, tokit);
 
-    xml.writeEndElement();
+    page.xml.writeEndElement();
   }
   else
   {
-    std::filesystem::path target_path = pathResolver().filePath(*incfile);
+    std::string href = page.links().linkTo(*incfile);
 
-    xml.writeStartElement("a");
+    page.xml.writeStartElement("a");
 
-    xml.writeAttribute("class", "include");
+    page.xml.writeAttribute("class", "include");
 
-    std::string href = pathHref(target_path);
-
-    xml.writeAttribute("href", href);
+    page.xml.writeAttribute("href", href);
 
     writeToken(col, tokit);
 
-    xml.writeEndElement();
+    page.xml.writeEndElement();
   }
 }
 
@@ -416,52 +373,49 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
 
   if (symref.flags & SymbolReference::Definition)
   {
-    xml.writeStartElement("dfn");
+    page.xml.writeStartElement("dfn");
 
     if (!css_class.empty())
-      xml.writeAttribute("class", css_class);
-    xml.writeAttribute("sym-ref", sym_ref);
+      page.xml.writeAttribute("class", css_class);
+    page.xml.writeAttribute("sym-ref", sym_ref);
 
     do_write_token();
 
-    xml.writeEndElement();
+    page.xml.writeEndElement();
   }
   else
   {
     SymbolReference symdef;
 
-    if (definitions.hasUniqueDefinition(SymbolId(symbol_id), &symdef))
+    if (definitions.hasUniqueDefinition(SymbolId(symbol_id), &symdef) && page.links())
     {
-      std::filesystem::path filepath = pathResolver().filePath(*files.get(FileId(symdef.file_id)));
-
-      std::string href = pathHref(filepath);
-      href += "#L" + std::to_string(symdef.line);
+      std::string href = page.links().linkTo(*files.get(FileId(symdef.file_id)), symdef.line);
 
       {
-        xml.writeStartElement("a");
+        page.xml.writeStartElement("a");
 
-        xml.writeAttribute("href", href);
+        page.xml.writeAttribute("href", href);
         if (!css_class.empty())
-          xml.writeAttribute("class", css_class);
-        xml.writeAttribute("sym-ref", sym_ref);
+          page.xml.writeAttribute("class", css_class);
+        page.xml.writeAttribute("sym-ref", sym_ref);
 
         do_write_token();
 
-        xml.writeEndElement();
+        page.xml.writeEndElement();
       }
 
     }
     else
     {
-      xml.writeStartElement("span");
+      page.xml.writeStartElement("span");
 
       if (!css_class.empty())
-        xml.writeAttribute("class", css_class);
-      xml.writeAttribute("sym-ref", sym_ref);
+        page.xml.writeAttribute("class", css_class);
+      page.xml.writeAttribute("sym-ref", sym_ref);
 
       do_write_token();
 
-      xml.writeEndElement();
+      page.xml.writeEndElement();
     }
   }
 }

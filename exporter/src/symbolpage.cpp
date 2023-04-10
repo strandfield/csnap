@@ -50,45 +50,42 @@ void SymbolPageGenerator::setPathResolver(PathResolver& resolver)
 
 void SymbolPageGenerator::writePage()
 {
-  page.xml.stream() << "<!DOCTYPE html>\n";
+  page.xml.write("<!DOCTYPE html>\n");
 
-  xml::Element html{ page.xml, "html" };
-
+  html::start(page);
   {
-    xml::Element head{ page.xml, "head" };
-
+    html::head(page);
     {
-      xml::Element title{ page.xml, "title" };
-      title.text(symbol.name);
+      html::title(page);
+      page << symbol.name;
+      html::endtitle(page);
+
+      html::link(page, {
+        { "rel", "stylesheet" },
+        { "type", "text/css" },
+        { "href", page.url().pathToRoot() + "symbolpage.css" }
+        });
+      html::endelement(page);
     }
+    html::endlink(page);
 
-    {
-      xml::Element link{ page.xml, "link" };
-      link.attr("id", "codestylesheet");
-      link.attr("rel", "stylesheet");
-      link.attr("type", "text/css");
-      link.attr("href", page.url().pathToRoot() + "symbolpage.css");
-    }
-  }
-
-  {
-    xml::Element body{ page.xml, "body" };
-
+    html::body(page);
     {
       writeBody();
     }
+    html::endbody(page);
   }
+  html::end(page);
 }
 
 void SymbolPageGenerator::writeBody()
 {
-  {
-    xml::Element h1{ page.xml, "h1" };
-    h1.text(symbol.name);
-  }
+  html::h1(page);
+  page << symbol.name;
+  html::endh1(page);
 
   {
-    page.xml.stream() << "<p><b>Usr:</b> " << symbol.usr << "</p>\n";
+    page.write("<p><b>Usr:</b> " + symbol.usr + "</p>\n");
   }
 
   std::vector<SymbolReference> refs = snapshot.listReferences(symbol.id);
@@ -97,46 +94,35 @@ void SymbolPageGenerator::writeBody()
 
   if (!decls.empty())
   {
-    page.xml.writeStartElement("h2");
-
-    page.xml.writeCharacters("Declarations (");
-    page.xml.writeCharacters(std::to_string(decls.size()));
-    page.xml.writeCharacters(")");
-
-    page.xml.writeEndElement();
+    html::h2(page);
+    page << "Declarations (" << decls.size() << ")";
+    html::endh2(page);
 
     writeDecls(decls);
   }
 
   if (!defs.empty())
   {
-    page.xml.writeStartElement("h2");
+    html::h2(page);
 
     if (defs.size() > 1)
     {
-      page.xml.writeCharacters("Definitions (");
-      page.xml.writeCharacters(std::to_string(defs.size()));
-      page.xml.writeCharacters(")");
+      page << "Definitions (" << defs.size() << ")";
     }
     else
     {
-      page.xml.writeCharacters("Definition");
+      page << "Definition";
     }
-
-    page.xml.writeEndElement();
+    html::endh2(page);
 
     writeDecls(defs);
   }
 
   if (!refs.empty())
   {
-    page.xml.writeStartElement("h2");
-
-    page.xml.writeCharacters("Uses (");
-    page.xml.writeCharacters(std::to_string(refs.size()));
-    page.xml.writeCharacters(")");
-
-    page.xml.writeEndElement();
+    html::h2(page);
+    page << "Uses (" << refs.size() << ")";
+    html::endelement(page);
 
     writeUses(refs);
   }
@@ -150,26 +136,23 @@ void SymbolPageGenerator::writeDecls(const std::vector<SymbolReference>& list)
     if (!f)
       continue;
 
-    page.xml.writeStartElement("p");
-
+    html::p(page);
     {
       std::string href = page.links().linkTo(*f, d.line);
       std::string text = f->path + ":" + std::to_string(d.line);
 
       if (!href.empty())
       {
-        page.xml.writeStartElement("a");
-        page.xml.writeAttribute("href", href);
-        page.xml.writeCharacters(text);
-        page.xml.writeEndElement();
+        html::a(page, { { "href", href } });
+        page << text;
+        html::enda(page);
       }
       else
       {
-        page.xml.writeCharacters(text);
+        page << text;
       }
     }
-
-    page.xml.writeEndElement();
+    html::endp(page);
   }
 }
 
@@ -204,12 +187,9 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
   if (!content)
     return;
 
-  page.xml.writeStartElement("h3");
-
-  page.xml.writeCharacters(f->path);
-  page.xml.writeCharacters(" (" + std::to_string(std::distance(begin, end)) + ")");
-
-  page.xml.writeEndElement();
+  html::h3(page);
+  page << f->path << " (" << std::distance(begin, end) << ")";
+  html::endh3(page);
 
   /*SourceHighlighter highlighter{ page.xml };
 
@@ -227,32 +207,23 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
   {
     const SymbolReference& ref = *it;
 
-    page.xml.writeStartElement("div");
-    page.xml.writeAttribute("class", "use");
-
+    html::div(page, { {"class", "use"} });
     {
-      page.xml.writeStartElement("div");
-      page.xml.writeAttribute("class", "ln");
-
+      html::div(page, { {"class", "ln"} });
       {
-        page.xml.writeStartElement("a");
-        page.xml.writeAttribute("href", page.links().linkTo(*f, ref.line));
-        page.xml.writeCharacters(std::to_string(ref.line));
-        page.xml.writeEndElement();
+        html::a(page, { { "href", page.links().linkTo(*f, ref.line) } });
+        page << std::to_string(ref.line);
+        html::enda(page);
       }
+      html::enddiv(page);
 
-      page.xml.writeEndElement();
-
-      page.xml.writeStartElement("div");
-      page.xml.writeAttribute("class", "code");
-
+      html::div(page, { {"class", "code"} });
       {
-        page.xml.writeCharacters(std::string(content->lines.at(ref.line - 1)));
+        page << std::string(content->lines.at(ref.line - 1));
       }
-
-      page.xml.writeEndElement();
+      html::enddiv(page);
     }
-    page.xml.writeEndElement();
+    html::enddiv(page);
   }
 }
 

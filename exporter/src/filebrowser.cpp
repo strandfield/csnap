@@ -4,173 +4,117 @@
 
 #include "filebrowser.h"
 
-#include "xmlwriter.h"
+#include "htmlpage.h"
 
 namespace csnap
 {
 
-namespace html
-{
-
-void write_attributes(XmlWriter& xml, std::initializer_list<std::pair<std::string, std::string>>&& attrs)
-{
-  for (auto& p : attrs)
-  {
-    xml.writeAttribute(p.first, p.second);
-  }
-}
-
-void startelement(XmlWriter& xml, const char* tagname, std::initializer_list<std::pair<std::string, std::string>>&& attrs)
-{
-  xml.writeStartElement(tagname);
-  write_attributes(xml, std::move(attrs));
-}
-
-void endelement(XmlWriter& xml)
-{
-  xml.writeEndElement();
-}
-
-void link(XmlWriter& xml, std::initializer_list<std::pair<std::string, std::string>>&& attrs = {})
-{
-  startelement(xml, "link", std::move(attrs));
-}
-
-void script(XmlWriter& xml, std::initializer_list<std::pair<std::string, std::string>>&& attrs = {})
-{
-  startelement(xml, "script", std::move(attrs));
-}
-
-void div(XmlWriter& xml, std::initializer_list<std::pair<std::string, std::string>>&& attrs = {})
-{
-  startelement(xml, "div", std::move(attrs));
-}
-
-} // namespace html
-
-FileBrowserGenerator::FileBrowserGenerator(XmlWriter& xmlstream, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs) :
-  SourceHighlighter(xmlstream, fc, fm, fs, ss, defs)
+FileBrowserGenerator::FileBrowserGenerator(HtmlPage& p, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs) :
+  SourceHighlighter(p, fc, fm, fs, ss, defs)
 {
 }
 
 void FileBrowserGenerator::generatePage()
 {
-  xml.stream() << "<!DOCTYPE html>\n";
+  page.write("<!DOCTYPE html>\n");
 
-  xml::Element html{ xml, "html" };
-
+  html::start(page);
   {
-    xml::Element head{ xml, "head" };
-
+    html::head(page);
     {
-      xml::Element title{ xml, "title" };
-      title.text(sema.file->path);
+      html::title(page);
+      page << sema.file->path;
+      html::endtitle(page);
+
+      html::link(page, {
+        { "id", "codestylesheet" },
+        { "rel", "stylesheet" },
+        { "type", "text/css" },
+        { "href", page.url().pathToRoot() + "syntax.qtcreator.css" }
+        });
+      html::endlink(page);
+
+      html::link(page, {
+        { "rel", "stylesheet" },
+        { "type", "text/css" },
+        { "href", page.url().pathToRoot() + "tooltip.css" }
+        });
+      html::endlink(page);
+
+      html::script(page, {
+        { "type", "text/javascript" }
+        });
+      page << "var csnapRootPath=\"" << page.url().pathToRoot() << "\";";
+      html::endscript(page);
+
+      html::script(page, {
+        { "type", "text/javascript" },
+        { "src", page.url().pathToRoot() + "codenav.js" }
+        });
+      page << " ";
+      html::endscript(page);
     }
+    html::endhead(page);
 
-    {
-      xml::Element link{ xml, "link" };
-      link.attr("id", "codestylesheet");
-      link.attr("rel", "stylesheet");
-      link.attr("type", "text/css");
-      link.attr("href", rootPath() + "syntax.qtcreator.css");
-    }
-
-    html::link(xml, {
-      { "rel", "stylesheet" }, 
-      { "type", "text/css" },
-      { "href", rootPath() + "tooltip.css" }
-    });
-    html::endelement(xml);
-
-    html::script(xml, { 
-      { "type", "text/javascript" }
-    });
-    {
-      xml.writeCharacters("var csnapRootPath=\"");
-      xml.writeCharacters(rootPath());
-      xml.writeCharacters("\";");
-    }
-    html::endelement(xml);
-
-    html::script(xml, { 
-      { "type", "text/javascript" }, 
-      { "src", rootPath() + "codenav.js" } 
-    });
-    {
-      xml.writeCharacters(" ");
-    }
-    html::endelement(xml);
-  }
-
-  {
-    xml::Element body{ xml, "body" };
-
+    html::body(page);
     {
       generate();
     }
+    html::endbody(page);
   }
+  html::end(page);
 }
 
 void FileBrowserGenerator::generate()
 {
-  html::div(xml, { {"id", "content"} });
+  html::div(page, { {"id", "content"} });
   {
-    xml.writeStartElement("table");
-    xml.writeAttribute("class", "code");
-    xml.writeAttribute("file-id", sema.file->id.value());
-
+    html::table(page, { {"class", "code"} });
+    page.xml.writeAttribute("file-id", sema.file->id.value());
     {
-      xml.writeStartElement("tbody");
-
+      html::tbody(page);
       writeCode();
-
-      xml.writeEndElement();
+      html::endtbody(page);
     }
-
-    xml.writeEndElement();
+    html::endtable(page);
   }
-  html::endelement(xml);
+  html::enddiv(page);
 }
 
 void FileBrowserGenerator::generate(const std::set<int>& lines)
 {
-  xml.writeStartElement("table");
-  xml.writeAttribute("class", "code");
-
+  html::table(page, { {"class", "code"} });
   {
-    xml.writeStartElement("tbody");
+    html::tbody(page);
 
     for (int l : lines)
     {
       writeLine(l - 1);
     }
 
-    xml.writeEndElement();
+    html::endtbody(page);
   }
 
-  xml.writeEndElement();
+  html::endtable(page);
 }
 
 void FileBrowserGenerator::writeLine(size_t i)
 {
-  xml.writeStartElement("tr");
+  html::tr(page);
 
   {
-    xml.writeStartElement("th");
-    xml.writeAttribute("id", "L" + std::to_string(i + 1));
-    xml.writeCharacters(std::to_string(i + 1));
-    xml.writeEndElement();
+    html::th(page, { {"id", "L" + std::to_string(i + 1)} });
+    page << std::to_string(i + 1);
+    html::endth(page);
   }
 
   {
-    xml.writeStartElement("td");
-
+    html::td(page);
     writeLineSource((int)i + 1);
-
-    xml.writeEndElement();
+    html::endtd(page);
   }
 
-  xml.writeEndElement();
+  html::endtr(page);
 }
 
 void FileBrowserGenerator::writeCode()

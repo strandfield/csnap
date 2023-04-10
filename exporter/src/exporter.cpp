@@ -60,11 +60,10 @@ void export_html(Snapshot& snapshot, File& file, const std::filesystem::path& ou
   std::stringstream outstrstream;
   XmlWriter xml{ outstrstream };
 
-  FileBrowserGenerator generator{ xml, *fc, std::move(sema), snapshot.files(), symbols, defs };
+  HtmlPage page{ outputpath, xml };
+  page.links().setPathResolver(pathresolver);
 
-  generator.setFilePath(outputpath);
-  generator.setPathResolver(pathresolver);
-
+  FileBrowserGenerator generator{ page, *fc, std::move(sema), snapshot.files(), symbols, defs };
   generator.generatePage();
 
   write_file(outputdir / outputpath, outstrstream.str());

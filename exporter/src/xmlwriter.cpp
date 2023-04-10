@@ -17,6 +17,11 @@ XmlWriter::OutputStream& XmlWriter::stream() const
   return m_output;
 }
 
+void XmlWriter::write(const std::string& txt)
+{
+  stream() << txt;
+}
+
 void XmlWriter::writeStartElement(const std::string& qname)
 {
   if (withinElement() && !current().attributes_closed)

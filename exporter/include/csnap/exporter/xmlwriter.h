@@ -19,6 +19,8 @@ public:
 
   OutputStream& stream() const;
 
+  void write(const std::string& txt);
+
   void writeStartElement(const std::string& qname);
   void writeEndElement();
 
@@ -45,53 +47,5 @@ private:
   OutputStream& m_output;
   std::vector<Element> m_elements;
 };
-
-namespace xml
-{
-
-class Element
-{
-public:
-  XmlWriter& xml;
-
-public:
-  Element() = delete;
-  Element(const Element&) = delete;
-  ~Element();
-  Element(XmlWriter& writer, const std::string& qname);
-
-  void attr(const std::string& name, const std::string& value);
-  void attr(const std::string& name, int value);
-
-  void text(const std::string& txt);
-};
-
-inline Element::~Element()
-{
-  xml.writeEndElement();
-}
-
-inline Element::Element(XmlWriter& writer, const std::string& qname) :
-  xml(writer)
-{
-  xml.writeStartElement(qname);
-}
-
-inline void Element::attr(const std::string& name, const std::string& value)
-{
-  xml.writeAttribute(name, value);
-}
-
-inline void Element::attr(const std::string& name, int value)
-{
-  xml.writeAttribute(name, value);
-}
-
-inline void Element::text(const std::string& txt)
-{
-  xml.writeCharacters(txt);
-}
-
-} // namespace
 
 #endif // CSNAP_XMLWRITER_H

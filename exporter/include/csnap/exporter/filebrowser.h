@@ -16,7 +16,7 @@ class FileBrowserGenerator : public SourceHighlighter
 {
 public:
 
-  FileBrowserGenerator(XmlWriter& xmlstream, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs);
+  FileBrowserGenerator(HtmlPage& p, const FileContent& fc, FileSema fm, const FileList& fs, const SymbolMap& ss, const DefinitionTable& defs);
 
   void generatePage();
   void generate();
