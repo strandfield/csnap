@@ -18,11 +18,6 @@
 namespace csnap
 {
 
-static std::string get_symbol_symref(const Symbol& sym)
-{
-  return std::to_string(sym.id.value()) + std::string(".") + sym.name.c_str();
-}
-
 static std::array<char, 256> build_replacements()
 {
   std::array<char, 256> r;
@@ -44,7 +39,7 @@ static std::string get_symbol_symrefs_filename(const Symbol& sym)
 {
   static const std::array<char, 256> replacements = build_replacements();
 
-  std::string r = get_symbol_symref(sym);
+  std::string r = SourceHighlighter::symbol_symref(sym);
 
   std::for_each(r.begin(), r.end(), [](char& c) {
     c = replacements[(unsigned char)c];
@@ -101,6 +96,11 @@ PathResolver& SourceHighlighter::pathResolver() const
 void SourceHighlighter::setPathResolver(PathResolver& resolver)
 {
   m_path_resolver = &resolver;
+}
+
+std::string SourceHighlighter::symbol_symref(const Symbol& sym)
+{
+  return std::to_string(sym.id.value()) + std::string(".") + sym.name;
 }
 
 void SourceHighlighter::writeLineSource(int l)
@@ -402,7 +402,7 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
 
   int symbol_id = symref.symbol_id;
   SymbolPtr symbol = symbols.at(SymbolId(symbol_id));
-  std::string sym_ref = get_symbol_symref(*symbol);
+  std::string sym_ref = symbol_symref(*symbol);
   const std::string& css_class = cssClass(*symbol);
 
   auto do_write_token = [this, &col, &tokit, symbol]() {

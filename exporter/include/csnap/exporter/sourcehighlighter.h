@@ -68,6 +68,8 @@ public:
   PathResolver& pathResolver() const;
   void setPathResolver(PathResolver& resolver);
 
+  static std::string symbol_symref(const Symbol& sym);
+
   void writeLineSource(int l);
 
 protected:
