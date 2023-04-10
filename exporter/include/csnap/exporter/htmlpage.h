@@ -66,12 +66,28 @@ inline void HtmlPage::write(const std::string& txt)
   xml.stream() << txt;
 }
 
-template<typename T>
-XmlWriter::OutputStream& operator<<(HtmlPage& page, T&& data)
+inline HtmlPage& operator<<(HtmlPage& page, int val)
 {
-  page.xml.writeCharacters(std::string());
-  page.xml.stream() << data;
-  return page.xml.stream();
+  page.xml.stream() << val;
+  return page;
+}
+
+inline HtmlPage& operator<<(HtmlPage& page, const std::string& str)
+{
+  page.xml.writeCharacters(str);
+  return page;
+}
+
+inline HtmlPage& operator<<(HtmlPage& page, std::string_view str)
+{
+  page.xml.writeCharacters(str);
+  return page;
+}
+
+inline HtmlPage& operator<<(HtmlPage& page, const char* str)
+{
+  page.xml.writeCharacters(str);
+  return page;
 }
 
 namespace html
@@ -83,6 +99,16 @@ inline void write_attributes(XmlWriter& xml, std::initializer_list<std::pair<std
   {
     xml.writeAttribute(p.first, p.second);
   }
+}
+
+inline void attr(HtmlPage& page, const char* name, const std::string& value)
+{
+  page.xml.writeAttribute(name, value);
+}
+
+inline void attr(HtmlPage& page, const char* name, int value)
+{
+  page.xml.writeAttribute(name, value);
 }
 
 inline void startelement(HtmlPage& page, const char* tagname, std::initializer_list<std::pair<std::string, std::string>>&& attrs = {})
@@ -132,6 +158,8 @@ DECLARE_HTML_ELEMENT(tbody)
 DECLARE_HTML_ELEMENT(tr)
 DECLARE_HTML_ELEMENT(th)
 DECLARE_HTML_ELEMENT(td)
+DECLARE_HTML_ELEMENT(ul)
+DECLARE_HTML_ELEMENT(li)
 
 #undef DECLARE_HTML_ELEMENT
 

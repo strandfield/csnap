@@ -3,6 +3,7 @@
 
 .use {
    display: flex;
+   margin-bottom: 0.5ex;
 }
 
 .ln {
@@ -13,4 +14,9 @@
 
 .code {
   white-space: pre;
+}
+
+.here {
+  background-color: yellow;
+  color: red;
 }

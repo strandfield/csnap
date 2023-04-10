@@ -6,6 +6,8 @@
 
 #include "sourcehighlighter.h"
 
+#include <cpptok/tokenizer.h>
+
 namespace csnap
 {
 
@@ -203,9 +205,13 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
     page.xml.writeEndElement();
   }*/
 
+
+  cpptok::Tokenizer lexer;
+
   for (auto it = begin; it != end; ++it)
   {
     const SymbolReference& ref = *it;
+    std::string_view linetext = content->lines.at(ref.line - 1);
 
     html::div(page, { {"class", "use"} });
     {
@@ -218,8 +224,25 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
       html::enddiv(page);
 
       html::div(page, { {"class", "code"} });
+
+      if (ref.flags & SymbolReference::Implicit)
       {
-        page << std::string(content->lines.at(ref.line - 1));
+        page << linetext;
+      }
+      else
+      {
+        size_t col = static_cast<size_t>(ref.col) - 1;
+        page << linetext.substr(0, col);
+
+        lexer.tokenize(linetext.data() + col, linetext.size() - col);
+
+        html::span(page, { {"class", "here"} });
+        page << lexer.output.front().text();
+        html::endspan(page);
+
+        page << linetext.substr(col + lexer.output.front().text().size());
+
+        lexer.output.clear();
       }
       html::enddiv(page);
     }

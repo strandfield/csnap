@@ -66,19 +66,50 @@ void XmlWriter::writeAttribute(const std::string& name, int value)
 
 void XmlWriter::writeCharacters(const std::string& text)
 {
+  writeCharacters(std::string_view(text));
+}
+
+void XmlWriter::writeCharacters(std::string_view text)
+{
+  writeCharacters(text.data(), text.size());
+}
+
+inline void write_char_escaped(XmlWriter::OutputStream& stream, char c)
+{
+  // https://stackoverflow.com/questions/1091945/what-characters-do-i-need-to-escape-in-xml-documents
+
+
+  if (c == '<')
+    stream << "&lt;";
+  else if (c == '>')
+    stream << "&gt;";
+  else if (c == '&')
+    stream << "&amp;";
+  else
+    stream << c;
+}
+
+void XmlWriter::writeCharacters(const char* str)
+{
   if (withinElement() && !current().attributes_closed)
     sealAttributes();
 
-  // https://stackoverflow.com/questions/1091945/what-characters-do-i-need-to-escape-in-xml-documents
-
-  for (char c : text)
+  while(*str)
   {
-    if (c == '<')
-      m_output << "&lt;";
-    else if (c == '&')
-      m_output << "&amp;";
-    else
-      m_output << c;
+    char c = *(str++);
+    write_char_escaped(m_output, c);
+  }
+}
+
+void XmlWriter::writeCharacters(const char* str, size_t n)
+{
+  if (withinElement() && !current().attributes_closed)
+    sealAttributes();
+
+  while(n--)
+  {
+    char c = *(str++);
+    write_char_escaped(m_output, c);
   }
 }
 

@@ -7,6 +7,7 @@
 
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 class XmlWriter
@@ -28,6 +29,9 @@ public:
   void writeAttribute(const std::string& name, int value);
 
   void writeCharacters(const std::string& text);
+  void writeCharacters(std::string_view text);
+  void writeCharacters(const char* str);
+  void writeCharacters(const char* str, size_t n);
 
   XmlWriter& operator=(const XmlWriter&) = delete;
 
