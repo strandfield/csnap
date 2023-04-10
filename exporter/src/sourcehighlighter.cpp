@@ -420,6 +420,19 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
   }
 }
 
+static void advance_reference(SourceHighlighter::ReferenceIterator& iterator)
+{
+  int col = (*iterator).col;
+
+  // Should be simply,
+  ++iterator;
+  // but it doesn't work as some references appear at the same column 
+  // (for reasons I don't understand yet; they should be implicit and automatically removed)
+
+  while (!iterator.atend() && (*iterator).col == col)
+    ++iterator;
+}
+
 void SourceHighlighter::writeTokens(size_t& col, TokenIterator& tokit, SemaIterators& sema)
 {
   while (!tokit.atend())
@@ -434,7 +447,7 @@ void SourceHighlighter::writeTokens(size_t& col, TokenIterator& tokit, SemaItera
     else if (!sema.reference.atend() && match(col, *sema.reference))
     {
       writeTokenAnnotated(col, tokit, sema.reference);
-      ++sema.reference;
+      advance_reference(sema.reference);
     }
     else
     {

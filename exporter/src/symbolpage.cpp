@@ -97,7 +97,7 @@ void SymbolPageGenerator::writeBody()
   if (!decls.empty())
   {
     html::h2(page);
-    page << "Declarations (" << decls.size() << ")";
+    page << "Declarations (" << (int)decls.size() << ")";
     html::endh2(page);
 
     writeDecls(decls);
@@ -109,7 +109,7 @@ void SymbolPageGenerator::writeBody()
 
     if (defs.size() > 1)
     {
-      page << "Definitions (" << defs.size() << ")";
+      page << "Definitions (" << (int)defs.size() << ")";
     }
     else
     {
@@ -123,7 +123,7 @@ void SymbolPageGenerator::writeBody()
   if (!refs.empty())
   {
     html::h2(page);
-    page << "Uses (" << refs.size() << ")";
+    page << "Uses (" << (int)refs.size() << ")";
     html::endelement(page);
 
     writeUses(refs);
@@ -190,7 +190,7 @@ void SymbolPageGenerator::writeUsesInFile(RefIterator begin, RefIterator end)
     return;
 
   html::h3(page);
-  page << f->path << " (" << std::distance(begin, end) << ")";
+  page << f->path << " (" << (int)std::distance(begin, end) << ")";
   html::endh3(page);
 
   /*SourceHighlighter highlighter{ page.xml };
