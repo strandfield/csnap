@@ -17,13 +17,30 @@
 namespace csnap
 {
 
+/**
+ * \brief provides semantic information about a file
+ */
 struct FileSema
 {
+  /**
+   * \brief pointer to the file described by this struct
+   */
   File* file = nullptr;
 
+  /**
+   * \brief the ordered list of files included by this file
+   */
   std::vector<Include> includes;
 
+  /**
+   * \brief the ordered list of symbol references in this file
+   */
   std::vector<SymbolReference> references;
+
+  /**
+   * \brief the list of files that are including this file
+   */
+  std::vector<Include> reverse_includes;
 };
 
 /**

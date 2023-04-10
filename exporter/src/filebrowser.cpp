@@ -69,6 +69,38 @@ void FileBrowserGenerator::generate()
 {
   html::div(page, { {"id", "content"} });
   {
+    if (!sema.reverse_includes.empty())
+    {
+      html::h2(page);
+      page << "Include graph";
+      html::endh2(page);
+
+      html::p(page);
+      page << "This file is included by the following file(s):";
+      html::endp(page);
+
+      html::ul(page);
+      for (const Include& inc : sema.reverse_includes)
+      {
+        const File* other = files.get(inc.file_id);
+        assert(other);
+
+        html::li(page);
+        {
+          html::a(page);
+          html::attr(page, "href", page.links().linkTo(*other, inc.line));
+          page << other->path << ":" << inc.line;
+          html::enda(page);
+        }
+        html::endli(page);
+      }
+      html::endul(page);
+    }
+
+    html::h2(page);
+    page << "Code";
+    html::endh2(page);
+
     html::table(page, { {"class", "code"} });
     page.xml.writeAttribute("file-id", sema.file->id.value());
     {

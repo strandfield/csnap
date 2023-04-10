@@ -34,6 +34,7 @@ void export_html(Snapshot& snapshot, File& file, const std::filesystem::path& ou
   sema.file = &file;
   sema.references = snapshot.listReferencesInFile(file.id);
   sema.includes = snapshot.listIncludesInFile(file.id);
+  sema.reverse_includes = snapshot.findWhereFileIsIncluded(file.id);
 
   remove_implicit_references(sema.references);
 
