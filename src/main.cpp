@@ -11,8 +11,8 @@ extern void export_(std::vector<std::string> args);
   std::cout << "csnap is a libclang-based command-line utility to create snapshots of C++ programs." << std::endl;
   std::cout << std::endl;
   std::cout << "Syntax:" << std::endl;
-  std::cout << "  csnap scan --sln <Visual Studio solution> --ouput <snapshot.db>" << std::endl;
-  std::cout << "  csnap export -i <snapshot.db> --ouput <outdir>" << std::endl;
+  std::cout << "  csnap scan --sln <Visual Studio solution> --output <snapshot.db>" << std::endl;
+  std::cout << "  csnap export -i <snapshot.db> --output <outdir>" << std::endl;
 
   std::exit(0);
 }

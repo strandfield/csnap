@@ -24,6 +24,11 @@ namespace csnap
 
 struct PendingData;
 
+/**
+ * \brief provides a snapshot of a C++ program
+ * 
+ * Use open() or create() to get a valid Snapshot object.
+ */
 class Snapshot
 {
 public:

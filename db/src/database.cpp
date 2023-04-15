@@ -25,22 +25,37 @@ Database::~Database()
     close();
 }
 
+/**
+ * \brief return the underlying sqlite connection 
+ */
 sqlite3* Database::sqliteHandle() const
 {
   return m_database;
 }
 
+/**
+ * \brief returns whether an actual database connection is opened
+ */
 bool Database::good() const
 {
   return sqliteHandle() != nullptr;
 }
 
+/**
+ * \brief opens a connection to a database
+ * \param dbPath  the path of the database
+ * \return true on success, false otherwise
+ */
 bool Database::open(const std::filesystem::path& dbPath)
 {
   int r = sqlite3_open(dbPath.u8string().c_str(), &m_database);
   return r == SQLITE_OK;
 }
 
+/**
+ * \brief create a database and open a connection
+ * \param dbPath  the path of the database
+ */
 void Database::create(const std::filesystem::path& dbPath)
 {
   if (std::filesystem::exists(dbPath))
@@ -56,6 +71,9 @@ void Database::create(const std::filesystem::path& dbPath)
   }
 }
 
+/**
+ * \brief close the connection, if any
+ */
 void Database::close()
 {
   if (!good())

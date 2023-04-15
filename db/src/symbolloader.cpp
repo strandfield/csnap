@@ -4,6 +4,8 @@
 
 #include "symbolloader.h"
 
+#include "snapshot.h"
+
 namespace csnap
 {
 
@@ -14,6 +16,23 @@ SymbolLoader::SymbolLoader(Database& db) :
 
 }
 
+/**
+ * \brief constructs a symbol loader on a snapshot
+ * \param s  the snapshot
+ */
+SymbolLoader::SymbolLoader(const Snapshot& s) : SymbolLoader(s.database())
+{
+
+}
+
+/**
+ * \brief loads a symbol from the database
+ * \param id  the id of the symbol
+ * \return true on success, false otherwise
+ * 
+ * This function can fail if @a id is invalid or if there is 
+ * no symbol with the given @a id.
+ */
 bool SymbolLoader::read(SymbolId id)
 {
   m_query.reset();
@@ -43,6 +62,19 @@ SymbolEnumerator::SymbolEnumerator(Database& db) :
 
 }
 
+/**
+ * \brief constructs a symbol enumerator on a snapshot
+ * \param s  the snapshot
+ */
+SymbolEnumerator::SymbolEnumerator(const Snapshot& s) : SymbolEnumerator(s.database())
+{
+
+}
+
+/**
+ * \brief load the next symbol
+ * \return true if a symbol was loaded, false if the end has been reached
+ */
 bool SymbolEnumerator::next()
 {
   if (!m_query.step())

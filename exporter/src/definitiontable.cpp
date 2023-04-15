@@ -11,6 +11,12 @@
 namespace csnap
 {
 
+/**
+ * \brief builds the table
+ * \param defs  a list of all symbol definitions
+ * 
+ * This function will sort @a defs and create a fast (O(1)) lookup table.
+ */
 void DefinitionTable::build(std::vector<SymbolReference> defs)
 {
   m_definitions = std::move(defs);
@@ -44,6 +50,15 @@ void DefinitionTable::build(std::vector<SymbolReference> defs)
   }
 }
 
+/**
+ * \brief returns whether a symbol is defined only once
+ * \param id   the id of the symbol
+ * \param def  output pointer where the definition is written
+ * 
+ * If @a def is not nullptr, and there is only a single definition associated 
+ * with the symbol (i.e., this function returns true); the definition is 
+ * written in @a def.
+ */
 bool DefinitionTable::hasUniqueDefinition(SymbolId id, SymbolReference* def) const
 {
   auto symoffset = static_cast<size_t>(id.value());

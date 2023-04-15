@@ -10,6 +10,12 @@
 namespace sql
 {
 
+/**
+ * \brief RAII class for sql transaction
+ * 
+ * This class can be used to automatically open and close a transaction 
+ * in a C++ scope.
+ */
 class Transaction
 {
 private:
@@ -22,12 +28,19 @@ public:
   ~Transaction();
 };
 
+/**
+ * \brief opens a transaction on a database
+ * \param db  the database
+ */
 inline Transaction::Transaction(Database& db) :
   m_database(db)
 {
   sql::exec(m_database, "BEGIN TRANSACTION");
 }
 
+/**
+ * \brief commits the transaction
+ */
 inline Transaction::~Transaction()
 {
   sql::exec(m_database, "COMMIT");

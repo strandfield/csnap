@@ -12,6 +12,16 @@ typedef struct sqlite3 sqlite3;
 namespace csnap
 {
 
+/**
+ * \brief wrapper for a SQLite database connection
+ * 
+ * A default constructed Database corresponds to no connection 
+ * with good() returning false.
+ * Use open() or create() to open a connection.
+ * 
+ * The Database class automatically closes the connection (if any) 
+ * upon destruction.
+ */
 class Database
 {
 public:

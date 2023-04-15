@@ -13,6 +13,11 @@
 namespace csnap
 {
 
+/**
+ * \brief lookup table for the location of symbol definitions
+ * 
+ * This class can be used to quickly find where a symbol has been defined.
+ */
 class DefinitionTable
 {
 public:

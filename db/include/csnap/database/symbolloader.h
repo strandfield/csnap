@@ -12,10 +12,21 @@
 namespace csnap
 {
 
+class Snapshot;
+
+/**
+ * \brief helper class for loading symbols from the database
+ */
 class SymbolLoader
 {
 public:
   Database& database;
+
+  /**
+  * \brief the symbol that was last loaded
+  * 
+  * This symbol is only valid after a successful call to read().
+  */
   Symbol symbol;
 
 protected:
@@ -23,14 +34,24 @@ protected:
 
 public:
   explicit SymbolLoader(Database& db);
+  explicit SymbolLoader(const Snapshot& s);
 
   bool read(SymbolId id);
 };
 
+/**
+ * \brief helper class for enumerating symbols in a snapshot
+ */
 class SymbolEnumerator
 {
 public:
   Database& database;
+
+  /**
+   * \brief the symbol that was last loaded
+   * 
+   * The symbol is only valid after a successful call to next().
+   */
   Symbol symbol;
 
 protected:
@@ -38,6 +59,7 @@ protected:
 
 public:
   explicit SymbolEnumerator(Database& db);
+  explicit SymbolEnumerator(const Snapshot& s);
 
   bool next();
 };

@@ -144,7 +144,7 @@ void SnapshotExporter::run()
 
 void SnapshotExporter::writeSymbolPages()
 {
-  SymbolEnumerator symenumerator{ snapshot.database() };
+  SymbolEnumerator symenumerator{ snapshot };
 
   while (symenumerator.next())
   {

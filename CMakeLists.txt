@@ -48,7 +48,7 @@ add_subdirectory(src)
 ###### tests & examples
 ##################################################################
 
-add_subdirectory(examples)
+#add_subdirectory(examples)
 #add_subdirectory(tests)
 
 ##################################################################

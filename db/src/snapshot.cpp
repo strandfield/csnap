@@ -86,11 +86,18 @@ Snapshot::Snapshot(Database db) :
 
 }
 
+/**
+ * \brief returns the database associated with the snapshot
+ */
 Database& Snapshot::database() const
 {
   return *m_database;
 }
 
+/**
+ * \brief opens a snapshot
+ * \param p  the path of the snapshot
+ */
 Snapshot Snapshot::open(const std::filesystem::path& p)
 {
   Database db;
@@ -98,6 +105,10 @@ Snapshot Snapshot::open(const std::filesystem::path& p)
   return Snapshot(std::move(db));
 }
 
+/**
+ * \brief creates a new empty snapshot
+ * \param p  file path
+ */
 Snapshot Snapshot::create(const std::filesystem::path& p)
 {
   Database db;
@@ -109,11 +120,22 @@ Snapshot Snapshot::create(const std::filesystem::path& p)
   return Snapshot(std::move(db));
 }
 
+/**
+ * \brief sets a property of the snapshot
+ * \param key    the property name
+ * \param value  its value
+ */
 void Snapshot::setProperty(const std::string& key, const std::string& value)
 {
   pendingData().properties[key] = value;
 }
 
+/**
+ * \brief retrieves the value of a property
+ * \param key  the name of the property
+ * 
+ * If no such property exists, this returns an empty string.
+ */
 std::string Snapshot::property(const std::string& key) const
 {
   if (hasPendingData())
@@ -150,6 +172,14 @@ std::string Snapshot::readFile(const std::filesystem::path& filepath)
   return bytes;
 }
 
+/**
+ * \brief adds a new file to the snapshot
+ * \param f  struct filled with information about the file
+ * \return a pointer to the newly added file
+ * 
+ * \note The \a id field of \a f is ignored; an id is automatically 
+ * assigned by the snapshot to the returned File object.
+ */
 File* Snapshot::addFile(File f)
 {
   File* file = m_files.add(getCanonicalPath(std::move(f.path)));
@@ -166,6 +196,12 @@ void Snapshot::addFile(std::unique_ptr<File> f)
   pendingData().files.push_back(id);
 }
 
+/**
+ * \brief add files to the snapshot
+ * \param files  the files to add
+ * 
+ * \sa addFile().
+ */
 void Snapshot::addFiles(const std::vector<File>& files)
 {
   for (File f : files)
@@ -174,11 +210,23 @@ void Snapshot::addFiles(const std::vector<File>& files)
   }
 }
 
+/**
+ * \brief retrieves a file from the snapshot given its id
+ * \param id  the id of the file
+ * \return a pointer to the file, or nullptr if no such file exists
+ */
 File* Snapshot::getFile(FileId id) const
 {
   return files().get(id);
 }
 
+/**
+ * \brief finds a file given its path
+ * \param path  the file path
+ * \return a pointer to the file, or nullptr if no file matching the path is found
+ * 
+ * \note All backward slashes in \a path are automatically converted to forward slashes.
+ */
 File* Snapshot::findFile(const std::string& path) const
 {
   bool looks_canonical = std::find(path.begin(), path.end(), '\\') == path.end();
@@ -189,6 +237,9 @@ File* Snapshot::findFile(const std::string& path) const
     return files().find(getCanonicalPath(path));
 }
 
+/**
+ * \brief returns the list of all files in the snapshot
+ */
 const FileList& Snapshot::files() const
 {
   return m_files;
@@ -196,12 +247,24 @@ const FileList& Snapshot::files() const
 
 /**
  * \brief saves a copy of every file in the database
+ * 
+ * Note that this function only saves a copy of files presently in the 
+ * snapshot.
+ * If new files are subsequently added (e.g., using addFiles()), those 
+ * will not get copied unless addFilesContent() is called again.
  */
 void Snapshot::addFilesContent()
 {
   insert_file_content(*m_database, files().all());
 }
 
+/**
+ * \brief retrieves a copy of a file
+ * \param f  the id of the file
+ * 
+ * By default, the files are not copied in the snapshot;
+ * use addFilesContent() to save a copy of each file in the snapshot.
+ */
 std::shared_ptr<FileContent> Snapshot::getFileContent(FileId f)
 {
   std::shared_ptr<FileContent> result = m_filecontent_cache.find(f);
@@ -242,16 +305,29 @@ void Snapshot::addTranslationUnits(const std::vector<FileId>& file_ids, program:
   }
 }
 
+/**
+ * \brief get a translation unit from a file
+ * \param file  a pointer to the file
+ * \return pointer to the translation unit, or nullptr if none is associated with the file
+ */
 TranslationUnit* Snapshot::findTranslationUnit(File* file) const
 {
   return translationUnits().find(FileId(file->id));
 }
 
+/**
+ * \brief get a translation unit by id
+ * \param id  the id of the translation unit
+ * \return a pointer to the translation unit, or nullptr if no such translation unit exists
+ */
 TranslationUnit* Snapshot::getTranslationUnit(TranslationUnitId id) const
 {
   return translationUnits().get(id);
 }
 
+/**
+ * \brief returns the list of all translation units in the snapshot
+ */
 const TranslationUnitList& Snapshot::translationUnits() const
 {
   return m_translationunits;
@@ -350,16 +426,37 @@ void Snapshot::addSymbolReferences(const std::vector<SymbolReference>& list)
   pending_list.insert(pending_list.end(), list.begin(), list.end());
 }
 
+/**
+ * \brief list all references of a symbol
+ * \param symbol  the id of the symbol
+ * 
+ * Declarations and definitions are also considered to be references 
+ * in this function.
+ * 
+ * The references are listed in no particular order.
+ */
 std::vector<SymbolReference> Snapshot::listReferences(SymbolId symbol)
 {
   return select_from_symbolreference(*m_database, symbol);
 }
 
+/**
+ * \brief list all symbol references in a file
+ * \param file  the id of the file
+ * 
+ * Use this function to get a list of all symbols that are referenced in a file.
+ */
 std::vector<SymbolReference> Snapshot::listReferencesInFile(FileId file)
 {
   return select_symbolreference(*m_database, file);
 }
 
+/**
+ * \brief returns the symbol cache
+ * 
+ * This cache is used by the snapshot to avoid reloading symbols 
+ * from the database when they have already been loaded recently.
+ */
 SymbolCache& Snapshot::symbolCache()
 {
   return m_symbol_cache;
