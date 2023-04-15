@@ -21,34 +21,12 @@
 namespace csnap
 {
 
-template<typename T>
-class AddressableIds
-{
-public:
-
-  void* create(Identifier<T> id)
-  {
-    m_ids.push_back(std::make_unique<Identifier<T>>(id));
-    return m_ids.back().get();
-  }
-
-  Identifier<T> get(void* data)
-  {
-    auto* ptr = reinterpret_cast<Identifier<T>*>(data);
-    return ptr ? *ptr : Identifier<T>();
-  }
-
-private:
-  std::vector<std::unique_ptr<Identifier<T>>> m_ids;
-};
-
 class TranslationUnitIndexer : public libclang::BasicIndexer
 {
 private:
   csnap::Indexer& indexer;
   UsrMap usrs;
-  AddressableIds<Symbol> m_symbols;
-  AddressableIds<File> m_files;
+  std::map<std::string, std::shared_ptr<Symbol>> symbols;
 
 public:
   IndexingResult result;
@@ -136,14 +114,13 @@ public:
       return;
     }
 
-    SymbolId id = get_symbol_id(decl);
+    Symbol* symbol = get_symbol(decl);
 
-    if (assert(id.valid()), !id.valid())
+    if (!symbol)
       return;
 
-    void* refid = m_symbols.create(id);
-    setClientData(decl->declAsContainer, refid);
-    setClientData(decl->entityInfo, refid);
+    setClientData(decl->declAsContainer, symbol);
+    setClientData(decl->entityInfo, symbol);
 
     // It seems indexEntityReference() is not called for declaration despite the 
     // CXSymbolRole enum suggesting it could; so we create the reference manually here.
@@ -155,14 +132,15 @@ public:
       symref.file_id = fileid.value();
       symref.col = loc.column;
       symref.line = loc.line;
-      symref.symbol_id = id.value();
+      symref.symbol_id = symbol->id.value();
 
       symref.flags = decl->isDefinition ? CXSymbolRole_Definition : CXSymbolRole_Declaration;
 
       if (decl->isImplicit)
         symref.flags |= CXSymbolRole_Implicit;
 
-      symref.parent_symbol_id = m_symbols.get(getClientData(decl->semanticContainer));
+      if (void* cdata = getClientData(decl->semanticContainer))
+        symref.parent_symbol_id = reinterpret_cast<Symbol*>(cdata)->id;
 
       result.references.push_back(symref);
     }
@@ -180,29 +158,50 @@ public:
 
     FileId fileid = reinterpret_cast<File*>(loc.client_data)->id;
 
-    SymbolId symid = get_symbol_id(ref->referencedEntity);
+    Symbol* symbol = get_symbol(ref->referencedEntity);
 
-    if (assert(symid.valid()), !symid.valid())
+    if (!symbol)
       return;
 
     SymbolReference symref;
     symref.file_id = fileid.value();
     symref.col = loc.column;
     symref.line = loc.line;
-    symref.symbol_id = symid.value();
+    symref.symbol_id = symbol->id.value();
     symref.flags = ref->role;
 
-    if(ref->parentEntity) 
-      symref.parent_symbol_id = get_symbol_id(ref->parentEntity);
+    if (ref->parentEntity)
+    {
+      if (Symbol* parent_symbol = get_symbol(ref->parentEntity))
+        symref.parent_symbol_id = parent_symbol->id;
+    }
 
     result.references.push_back(symref);
   }
 
 protected:
 
-  SymbolId get_symbol_id(const CXIdxDeclInfo* decl)
+  Symbol* lookup_symbol(const std::string& usr) const
+  {
+    auto it = symbols.find(usr);
+    return it != symbols.end() ? it->second.get() : nullptr;
+  }
+
+  Symbol* insert_placeholder_symbol(SymbolId id, std::string usr)
+  {
+    auto symbol = std::make_shared<Symbol>();
+    symbol->id = id;
+    symbols[usr] = symbol;
+    symbol->usr = std::move(usr);
+    return symbol.get();
+  }
+
+  Symbol* get_symbol(const CXIdxDeclInfo* decl)
   {
     std::string usr{ decl->entityInfo->USR };
+
+    if (Symbol* symbol = lookup_symbol(usr))
+      return symbol;
 
     SymbolId id = usrs.find(usr);
 
@@ -218,7 +217,7 @@ protected:
         }
       }
 
-      return id;
+      return insert_placeholder_symbol(id, std::move(usr));
     }
 
     // $TODO: maybe we should assign temporary ids to 
@@ -230,35 +229,37 @@ protected:
     usrs.insert(usr, id);
 
     if (!inserted)
-      return id;
+      return insert_placeholder_symbol(id, std::move(usr));
 
-    // The SymbolId was just created, we need to create the corresponding Symbol struct.
+    // The SymbolId was just created, we need to create and fill the corresponding Symbol struct.
 
-    std::unique_ptr<Symbol> sym = create_symbol(decl, id);
+    std::shared_ptr<Symbol> sym = create_symbol(decl, id);
 
     if (sym->kind == Whatsit::CXXClass)
     {
       list_bases(*sym, decl);
     }
 
-    result.symbols.push_back(std::move(sym));
+    symbols[usr] = sym;
+    result.symbols.push_back(sym);
 
-    return id;
+    return sym.get();
   }
 
-  SymbolId get_symbol_id(const CXIdxEntityInfo* info)
+  Symbol* get_symbol(const CXIdxEntityInfo* info)
   {
-    SymbolId id = m_symbols.get(getClientData(info));
-
-    if (id.valid())
-      return id;
+    if (void* cdata = getClientData(info))
+      return reinterpret_cast<Symbol*>(cdata);
 
     std::string usr{ info->USR };
 
-    id = usrs.find(usr);
+    if (Symbol* symbol = lookup_symbol(usr))
+      return symbol;
+
+    SymbolId id = usrs.find(usr);
 
     if (id.valid())
-      return id;
+      return insert_placeholder_symbol(id, std::move(usr));
 
     auto [uid, inserted] = indexer.sharedUsrMap().get(usr);
     id = uid;
@@ -266,15 +267,16 @@ protected:
     usrs.insert(usr, id);
 
     if (!inserted)
-      return id;
+      return insert_placeholder_symbol(id, std::move(usr));
 
-    // The SymbolId was just created, we need to create the corresponding Symbol struct.
+    // The SymbolId was just created, we need to create and fill the corresponding Symbol struct.
 
-    std::unique_ptr<Symbol> sym = create_symbol(info, id);
+    std::shared_ptr<Symbol> sym = create_symbol(info, id);
 
-    result.symbols.push_back(std::move(sym));
+    symbols[usr] = sym;
+    result.symbols.push_back(sym);
 
-    return id;
+    return sym.get();
   }
 
 private:
@@ -325,8 +327,9 @@ private:
       return id;
 
     // create symbol
-    std::unique_ptr<Symbol> sym = create_symbol(cursor, id, static_cast<Whatsit>(it->second));
-    result.symbols.push_back(std::move(sym));
+    std::shared_ptr<Symbol> sym = create_symbol(cursor, id, static_cast<Whatsit>(it->second));
+    symbols[usr] = sym;
+    result.symbols.push_back(sym);
 
     return id;
   }
@@ -348,7 +351,7 @@ private:
     // $TODO: fill extra information depending on the kind of symbol
   }
 
-  std::unique_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what, SymbolId parent_id)
+  std::shared_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what, SymbolId parent_id)
   {
     auto s = std::make_unique<Symbol>(what, cursor.getSpelling());
     s->display_name = cursor.getDisplayName();
@@ -362,13 +365,13 @@ private:
     return s;
   }
 
-  std::unique_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what)
+  std::shared_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what)
   {
     SymbolId parent_id = get_symbol_id(cursor.getSemanticParent());
     return create_symbol(cursor, id, what, parent_id);
   }
 
-  std::unique_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id, SymbolId parent_id)
+  std::shared_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id, SymbolId parent_id)
   {
     auto s = std::make_unique<Symbol>(static_cast<Whatsit>(info->kind), name(info));
     s->display_name = libclangAPI().cursor(info->cursor).getDisplayName();
@@ -382,15 +385,19 @@ private:
     return s;
   }
 
-  std::unique_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id)
+  std::shared_ptr<Symbol> create_symbol(const CXIdxEntityInfo* info, SymbolId id)
   {
     SymbolId parent_id = get_parent_symbol_id(info);
     return create_symbol(info, id, parent_id);
   }
 
-  std::unique_ptr<Symbol> create_symbol(const CXIdxDeclInfo* decl, SymbolId id)
+  std::shared_ptr<Symbol> create_symbol(const CXIdxDeclInfo* decl, SymbolId id)
   {
-    SymbolId parent_id = m_symbols.get(getClientData(decl->semanticContainer));
+    SymbolId parent_id;
+    
+    if (void* cdata = getClientData(decl->semanticContainer))
+      parent_id = reinterpret_cast<Symbol*>(cdata)->id;
+
     if (parent_id.valid())
       return create_symbol(decl->entityInfo, id, parent_id);
     else
@@ -410,18 +417,13 @@ private:
     {
       const CXIdxBaseClassInfo* base = classdecl->bases[i];
 
-      SymbolId symid = m_symbols.get(getClientData(base->base));
-
-      if (!symid.valid())
+      if (void* cdata = getClientData(base->base))
       {
-        // $TODO: what?
-        continue;
+        BaseClass b;
+        b.base_id = reinterpret_cast<Symbol*>(cdata)->id;
+        b.access_specifier = static_cast<csnap::AccessSpecifier>(libclangAPI().cursor(base->cursor).getCXXAccessSpecifier());
+        bases.push_back(b);
       }
-
-      BaseClass b;
-      b.base_id = symid;
-      b.access_specifier = static_cast<csnap::AccessSpecifier>(libclangAPI().cursor(base->cursor).getCXXAccessSpecifier());
-      bases.push_back(b);
     }
 
     if (!bases.empty())
