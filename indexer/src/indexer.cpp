@@ -75,7 +75,7 @@ public:
       result.files.push_back(std::move(owningptr));
     }
 
-    return rawptr ? m_files.create(rawptr->id) : nullptr;
+    return rawptr;
   }
 
   void* ppIncludedFile(const CXIdxIncludedFileInfo* inclFile)
@@ -110,7 +110,9 @@ public:
     Include inc;
     inc.included_file_id = rawptr->id;
     inc.line = loc.line;
-    inc.file_id = m_files.get(loc.client_data);
+
+    if (loc.client_data)
+      inc.file_id = reinterpret_cast<File*>(loc.client_data)->id;
 
     if (inc.file_id.valid())
     {
@@ -121,7 +123,7 @@ public:
       std::cerr << "could not get id for " << libclangAPI().file(loc.file).getFileName() << std::endl;
     }
 
-    return m_files.create(rawptr->id);
+    return rawptr;
   }
 
   void indexDeclaration(const CXIdxDeclInfo* decl)
@@ -145,11 +147,9 @@ public:
 
     // It seems indexEntityReference() is not called for declaration despite the 
     // CXSymbolRole enum suggesting it could; so we create the reference manually here.
+    if(loc.client_data)
     {
-      FileId fileid = m_files.get(loc.client_data);
-      assert(fileid.valid());
-      if (!fileid.valid())
-        return;
+      FileId fileid = reinterpret_cast<File*>(loc.client_data)->id;
 
       SymbolReference symref;
       symref.file_id = fileid.value();
@@ -178,10 +178,7 @@ public:
       return;
     }
 
-    FileId fileid = m_files.get(loc.client_data);
-    assert(fileid.valid());
-    if (!fileid.valid())
-      return;
+    FileId fileid = reinterpret_cast<File*>(loc.client_data)->id;
 
     SymbolId symid = get_symbol_id(ref->referencedEntity);
 
