@@ -12,17 +12,28 @@
 namespace csnap
 {
 
+/**
+ * \brief constructs a result aggregator on the snapshot
+ * \param s  the snapshot
+ */
 IndexingResultAggregator::IndexingResultAggregator(Snapshot& s) :
   m_snapshot(s)
 {
 
 }
 
+/**
+ * \brief returns the snapshot on which the aggregator operates 
+ */
 Snapshot& IndexingResultAggregator::snapshot() const
 {
   return m_snapshot;
 }
 
+/**
+ * \brief removes all already references that are already known in the snapshot
+ * \param references  a list of references
+ */
 void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
 {
   if (references.empty())

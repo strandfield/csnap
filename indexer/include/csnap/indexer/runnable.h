@@ -10,6 +10,9 @@
 namespace csnap
 {
 
+/**
+ * \brief abstract class for a task that can be run on a ThreadPool 
+ */
 class Runnable
 {
 public:

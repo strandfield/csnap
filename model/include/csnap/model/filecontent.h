@@ -14,11 +14,27 @@
 namespace csnap
 {
 
+/**
+ * \brief stores the content of a file as archived in a snapshot
+ */
 class FileContent
 {
 public:
+  /**
+   * \brief pointer to the file
+   */
   File* file = nullptr;
+
+  /**
+   * \brief content of the file
+   */
   std::string content;
+
+  /**
+   * \brief the file content splitted by line
+   * 
+   * This member provides efficient access to the individual lines in a text file.
+   */
   std::vector<std::string_view> lines;
 
 public:

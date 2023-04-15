@@ -13,6 +13,9 @@
 namespace csnap
 {
 
+/**
+ * \brief stores a list of files
+ */
 class FileList
 {
 public:
@@ -26,12 +29,7 @@ public:
 
 private:
   using FilePtr = std::unique_ptr<File>;
-  // @TODO: add a read-only flag somewhere so that the following members 
-  // can be stored as vector<T> instead of vector<unique_ptr<T>>
-  // Alternative: have a vector<T> that is filled when loading 
-  // and a vector<unique_ptr<T>> that is used after loading, when 
-  // new things are added; getFile(id) and other would have to check the  
-  // vector<T> first, then the vector<unique_ptr<T>>.
+  // $TODO: consider another, more cache-friendly way to store the files ?
   std::vector<std::unique_ptr<File>> m_files;
 
 };

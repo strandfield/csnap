@@ -14,6 +14,16 @@ namespace csnap
 
 class Snapshot;
 
+/**
+ * \brief helper class for aggregating indexing results
+ * 
+ * The indexing of a translation unit may produce results that have already been 
+ * produced while indexing another translation unit (e.g., because both translation 
+ * units included the same file).
+ * 
+ * The reduce() function in this class removes symbol references that are already 
+ * known so that no duplicates end up in the database.
+ */
 class IndexingResultAggregator
 {
 public:

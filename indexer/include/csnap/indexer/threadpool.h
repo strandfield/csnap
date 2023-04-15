@@ -16,6 +16,9 @@ namespace csnap
 
 class ThreadPoolData;
 
+/**
+ * \brief a thread pool for running Runnable tasks
+ */
 class ThreadPool
 {
 public:

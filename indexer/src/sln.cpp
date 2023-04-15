@@ -94,6 +94,14 @@ static void listTranslationUnits(Snapshot& ss, const vcxproj::Solution& solution
   }
 }
 
+/**
+ * \brief opens a Visual Studio solution
+ * \param path      path to the sln file
+ * \param snapshot  the snapshot in which the results are written
+ * 
+ * This function lists the file and translation units in the various projects 
+ * of the solution and adds them to the snapshot.
+ */
 void openSln(const std::filesystem::path& path, Snapshot& snapshot)
 {
   vcxproj::Solution solution = vcxproj::load_solution(path);

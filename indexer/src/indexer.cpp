@@ -501,6 +501,15 @@ Snapshot& Indexer::snapshot() const
   return m_snapshot;
 }
 
+/**
+ * \brief starts the indexing of a translation unit asynchronously
+ * \param parsingResult  parsing result as produced by the Parser class
+ * 
+ * Please note that although indexing is performed asynchronously, it is 
+ * not really "multi-threaded": only a sinlge thread performs the indexing.
+ * This means that the indexing of @a parsingResult will only start after 
+ * all previous calls to asyncIndex() have completed.
+ */
 void Indexer::asyncIndex(TranslationUnitParsingResult parsingResult)
 {
   if (!parsingResult.result)
@@ -509,11 +518,17 @@ void Indexer::asyncIndex(TranslationUnitParsingResult parsingResult)
   m_threads.run(new IndexTranslationUnit(*this, std::move(parsingResult)));
 }
 
+/**
+ * \brief returns whether all indexing tasks have been completed
+ */
 bool Indexer::done() const
 {
   return m_threads.done();
 }
 
+/**
+ * \brief returns the indexer results queue
+ */
 IndexerResultQueue& Indexer::results()
 {
   return m_results;
@@ -546,6 +561,12 @@ std::pair<File*, std::unique_ptr<File>> Indexer::getFile(std::string path)
   return { nullptr, std::unique_ptr<File>(f) };
 }
 
+/**
+ * \brief a usr map shared among all indexing tasks
+ * 
+ * USRs (Unified Symbol Resolution) are used to match symbols across translation units.
+ * This map is used to always assign the same id to a symbol across all indexing tasks.
+ */
 GlobalUsrMap& Indexer::sharedUsrMap()
 {
   return m_usrs;

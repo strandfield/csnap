@@ -63,6 +63,11 @@ struct IndexingResult
 
 using IndexerResultQueue = SharedQueue<IndexingResult>;
 
+/**
+ * \brief perform the indexing of the parsed translation units
+ * 
+ * This class is used to index the translation units parsed by the Parser class.
+ */
 class Indexer
 {
 public:
@@ -85,6 +90,18 @@ public:
   GlobalUsrMap& sharedUsrMap();
 
 public:
+  /**
+   * \brief whether previously unknown files encountered while indexing should be indexed 
+   * 
+   * While indexing, all files included with an #include preprocessor directive are traversed.
+   * These files may not have been listed in previous steps by the scanner (e.g., because 
+   * they are not part of the project but are rather external dependencies).
+   * That is often the case for system and standard library headers.
+   * 
+   * If \a collect_new_files is true (it is false by default), these files are added to 
+   * the snapshot and indexed just like the project files; otherwise they are mostly ignored,
+   * only the symbol that are actually used in the project are indexed.
+   */
   bool collect_new_files = false;
 
 private:
@@ -94,7 +111,7 @@ private:
   IndexerResultQueue m_results;
   ThreadPool m_threads;
   GlobalUsrMap m_usrs;
-  int m_file_id_generator = -1;
+  int m_file_id_generator = -1; // used only if collect_new_files is true
 };
 
 } // namespace csnap

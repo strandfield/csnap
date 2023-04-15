@@ -57,11 +57,16 @@ public:
   }
 };
 
+/**
+ * \brief constructs a parser
+ * \param index  the clang index that will be used to create the clang translation units
+ * \param flist  the list of files that may be sent to the parser
+ */
 Parser::Parser(libclang::Index& index, const FileList& flist) :
   m_index(index),
   m_files(flist),
   m_result_queue(std::make_unique<ParsingResultQueue>()),
-  m_threads{1}
+  m_threads(1)
 {
 
 }
@@ -74,6 +79,12 @@ Parser::~Parser()
   }
 }
 
+/**
+ * \brief parse a translation unit asynchronously
+ * 
+ * The source file associated with @a tu must be in the FileList passed
+ * to the constructor.
+ */
 void Parser::asyncParse(TranslationUnit* tu)
 {
   if (!tu)
@@ -96,6 +107,9 @@ bool Parser::done() const
   return m_threads.done();
 }
 
+/**
+ * \brief returns the parser results queue
+ */
 ParsingResultQueue& Parser::results()
 {
   return *m_result_queue;

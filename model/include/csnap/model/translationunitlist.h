@@ -14,6 +14,9 @@
 namespace csnap
 {
 
+/**
+ * \brief stores a list of translation units
+ */
 class TranslationUnitList
 {
 public:

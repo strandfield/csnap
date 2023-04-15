@@ -19,12 +19,20 @@
 namespace csnap
 {
 
+/**
+ * \brief stores parsing results
+ * 
+ * \sa SharedQueue.
+ */
 class ParsingResultQueue : public SharedQueue<TranslationUnitParsingResult>
 {
 public:
   using SharedQueue<TranslationUnitParsingResult>::SharedQueue;
 };
 
+/**
+ * \brief class that parses translation units
+ */
 class Parser
 {
 public:
