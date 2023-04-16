@@ -39,6 +39,11 @@ public:
     result.source = tu;
   }
 
+  CXIdxClientContainer startedTranslationUnit()
+  {
+    return nullptr;
+  }
+
   void* enteredMainFile(const libclang::File& mainFile)
   {
     std::string path = mainFile.getFileName();
@@ -449,11 +454,14 @@ public:
     indexer(idxr),
     parsingResult(std::move(pr))
   {
-
+    m_task_number = ++m_task_counter;
   }
 
   void run() override
   {
+    const File* sourcefile = indexer.snapshot().files().get(parsingResult.source->sourcefile_id);
+    std::cout << "[" << m_task_number << "/" << indexer.snapshot().translationUnits().count() << "] " << sourcefile->path << std::endl;
+
     auto start = std::chrono::high_resolution_clock::now();
 
     TranslationUnitIndexer tui{ indexer, parsingResult.source };
@@ -464,7 +472,13 @@ public:
 
     indexer.results().write(std::move(tui.result));
   }
+
+private:
+  static size_t m_task_counter;
+  size_t m_task_number;
 };
+
+size_t IndexTranslationUnit::m_task_counter = 0;
 
 Indexer::Indexer(libclang::Index& index, Snapshot& snapshot) :
   m_index(index),

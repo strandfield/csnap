@@ -27,18 +27,25 @@ void TranslationUnitList::add(std::unique_ptr<TranslationUnit> tu)
   m_list[i] = std::move(tu);
 }
 
+/**
+ * \brief returns the list of all translation units as a vector
+ */
 std::vector<TranslationUnit*> TranslationUnitList::all() const
 {
   std::vector<TranslationUnit*> r;
   r.reserve(m_list.size());
 
-  std::for_each(m_list.begin(), m_list.end(), [&r](const std::unique_ptr<TranslationUnit>& e) {
+  std::for_each(m_list.begin(), m_list.end(), [&r](const TranslationUnitPtr& e) {
     if (e) r.push_back(e.get());
     });
 
   return r;
 }
 
+/**
+ * \brief get a translation unit by id
+ * \param id  the id of the translation unit
+ */
 TranslationUnit* TranslationUnitList::get(Identifier<TranslationUnit> id) const
 {
   if (!id.valid())
@@ -52,13 +59,27 @@ TranslationUnit* TranslationUnitList::get(Identifier<TranslationUnit> id) const
   return m_list.at(offset).get();
 }
 
+/**
+ * \brief find a translation unit given a source file id
+ * \param id  the id of the source file
+ */
 TranslationUnit* TranslationUnitList::find(FileId fid) const
 {
-  auto it = std::find_if(m_list.begin(), m_list.end(), [&fid](const std::unique_ptr<TranslationUnit>& tu) {
+  auto it = std::find_if(m_list.begin(), m_list.end(), [&fid](const TranslationUnitPtr& tu) {
     return tu && tu->sourcefile_id == fid;
     });
 
   return it != m_list.end() ? it->get() : nullptr;
+}
+
+/**
+ * \brief returns the number of translation units in the list
+ */
+size_t TranslationUnitList::count() const
+{
+  return std::count_if(m_list.begin(), m_list.end(), [](const TranslationUnitPtr& tu) {
+    return tu != nullptr;
+    });
 }
 
 } // namespace csnap

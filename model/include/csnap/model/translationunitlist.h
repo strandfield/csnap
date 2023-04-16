@@ -27,7 +27,10 @@ public:
 
   TranslationUnit* find(FileId fid) const;
 
+  size_t count() const;
+
 private:
+  using TranslationUnitPtr = std::unique_ptr<TranslationUnit>;
   std::vector<std::unique_ptr<TranslationUnit>> m_list;
 
 };
