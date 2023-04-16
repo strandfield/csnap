@@ -378,6 +378,40 @@ void Snapshot::addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols)
 }
 
 /**
+ * \brief retrieves a symbol by its id
+ * \param id      the id of the symbol
+ * \param loader  an optional loader to use if the symbol is not in the cache
+ * 
+ * If \a loader is nullptr and the symbol isn't in the case, a local SymbolLoader 
+ * is created.
+ * If you only want to retrieve a symbol if it is already loaded, use SymbolCache::find().
+ */
+std::shared_ptr<Symbol> Snapshot::getSymbol(SymbolId id, SymbolLoader* loader)
+{
+  if (std::shared_ptr<Symbol> symbol = symbolCache().find(id))
+    return symbol;
+
+  auto load_symbol = [this, id](SymbolLoader& theloader) -> std::shared_ptr<Symbol> {
+    if (!theloader.read(id))
+      return nullptr;
+
+    auto symbol = std::make_shared<Symbol>(std::move(theloader.symbol));
+    symbolCache().insert(symbol);
+    return symbol;
+  };
+
+  if (loader)
+  {
+    return load_symbol(*loader);
+  }
+  else
+  {
+    SymbolLoader local_loader{ *this };
+    return load_symbol(local_loader);
+  }
+}
+
+/**
  * \brief retrieves a list of symbols
  * \param ids  the ids of the symbol to retrieve
  * 

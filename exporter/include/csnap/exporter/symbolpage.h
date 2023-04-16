@@ -33,6 +33,7 @@ public:
 
 protected:
   void writeBody();
+  void writeSummary();
   void writeDecls(const std::vector<SymbolReference>& list);
   void writeUses(const std::vector<SymbolReference>& list);
   using RefIterator = std::vector<SymbolReference>::const_iterator;

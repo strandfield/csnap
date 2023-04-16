@@ -206,22 +206,26 @@ protected:
     std::string usr{ decl->entityInfo->USR };
 
     if (Symbol* symbol = lookup_symbol(usr))
+    {
+      if (decl->isDefinition)
+      {
+        // we may more accurately fill the Symbol struct here
+
+        if (decl->entityInfo->kind == CXIdxEntity_CXXClass)
+        {
+          list_bases(symbol->id, decl);
+        }
+
+        fill_symbol(*symbol, libclangAPI().cursor(decl->cursor));
+      }
+
       return symbol;
+    }
 
     SymbolId id = usrs.find(usr);
 
     if (id.valid())
     {
-      if (decl->isDefinition || decl->isRedeclaration)
-      {
-        // $TODO: we may more accurately fill the Symbol struct here ?
-
-        if (decl->isDefinition && decl->entityInfo->kind == CXIdxEntity_CXXClass)
-        {
-          list_bases(id, decl);
-        }
-      }
-
       return insert_placeholder_symbol(id, std::move(usr));
     }
 
@@ -244,6 +248,8 @@ protected:
     {
       list_bases(*sym, decl);
     }
+
+    fill_symbol(*sym, libclangAPI().cursor(decl->cursor));
 
     symbols[usr] = sym;
     result.symbols.push_back(sym);
@@ -353,7 +359,27 @@ private:
 
   void fill_symbol(Symbol& s, const libclang::Cursor& c)
   {
-    // $TODO: fill extra information depending on the kind of symbol
+    switch (c.kind())
+    {
+    case CXCursor_EnumDecl:
+    {
+      csnap::set_flag(s, Symbol::IsScoped, c.EnumDecl_isScoped());
+    }
+    break;
+    case CXCursor_CXXMethod:
+    case CXCursor_Constructor:
+    case CXCursor_Destructor:
+    {
+      csnap::set_flag(s, Symbol::Default, c.CXXMethod_isDefaulted());
+      csnap::set_flag(s, Symbol::Const, c.CXXMethod_isConst());
+      csnap::set_flag(s, Symbol::Static, c.CXXMethod_isStatic());
+      csnap::set_flag(s, Symbol::Virtual, c.CXXMethod_isVirtual());
+      csnap::set_flag(s, Symbol::Pure, c.CXXMethod_isPureVirtual());
+    }
+    default:
+      break;
+    }
+
   }
 
   std::shared_ptr<Symbol> create_symbol(const libclang::Cursor& cursor, SymbolId id, Whatsit what, SymbolId parent_id)

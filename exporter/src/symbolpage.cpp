@@ -86,9 +86,7 @@ void SymbolPageGenerator::writeBody()
   page << symbol.name;
   html::endh1(page);
 
-  {
-    page.write("<p><b>Usr:</b> " + symbol.usr + "</p>\n");
-  }
+  writeSummary();
 
   std::vector<SymbolReference> refs = snapshot.listReferences(symbol.id);
   std::vector<SymbolReference> decls, defs;
@@ -128,6 +126,66 @@ void SymbolPageGenerator::writeBody()
 
     writeUses(refs);
   }
+}
+
+void SymbolPageGenerator::writeSummary()
+{
+  html::p(page);
+  {
+    static const std::map<Symbol::Flag, std::string> dict = {
+      { Symbol::Public, "public" },
+      { Symbol::Protected, "protected" },
+      { Symbol::Private, "private" },
+      { Symbol::Inline, "inline" },
+      { Symbol::Static, "static" },
+      { Symbol::Constexpr, "constexpr" },
+      { Symbol::IsScoped, "scoped" },
+      { Symbol::IsStruct, "struct" },
+      { Symbol::IsFinal, "final" },
+      { Symbol::Virtual, "virtual" },
+      { Symbol::Override, "override" },
+      { Symbol::Final, "final" },
+      { Symbol::Const, "const" },
+      { Symbol::Pure, "pure" },
+      { Symbol::Noexcept, "noexcept" },
+      { Symbol::Explicit, "explicit" },
+      { Symbol::Default, "default" },
+      { Symbol::Delete, "delete" },
+    };
+
+    for (const auto& p : dict)
+    {
+      if (csnap::test_flag(symbol, p.first))
+      {
+        html::span(page);
+        html::attr(page, "class", "symbol-flag");
+        page << "[" << p.second << "]";
+        html::endspan(page);
+      }
+    }
+  }
+  html::endp(page);
+
+  if (symbol.parent_id.valid())
+  {
+    std::shared_ptr<Symbol> parent = snapshot.getSymbol(symbol.parent_id);
+
+    if (parent)
+    {
+      html::p(page);
+      {
+        page << "Semantic parent: ";
+
+        html::a(page);
+        html::attr(page, "href", SourceHighlighter::symbol_symref(*parent) + ".html");
+        page << parent->name;
+        html::enda(page);
+      }
+      html::endp(page);
+    }
+  }
+
+  page.write("<p><b>Usr:</b> " + symbol.usr + "</p>\n");
 }
 
 void SymbolPageGenerator::writeDecls(const std::vector<SymbolReference>& list)

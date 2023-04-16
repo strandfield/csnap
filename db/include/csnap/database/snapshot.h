@@ -24,6 +24,8 @@ namespace csnap
 
 struct PendingData;
 
+class SymbolLoader;
+
 /**
  * \brief provides a snapshot of a C++ program
  * 
@@ -70,6 +72,7 @@ public:
   std::vector<Include> findWhereFileIsIncluded(FileId f) const;
 
   void addSymbols(const std::vector<std::shared_ptr<Symbol>>& symbols);
+  std::shared_ptr<Symbol> getSymbol(SymbolId id, SymbolLoader* loader = nullptr);
   std::map<SymbolId, std::shared_ptr<Symbol>> loadSymbols(const std::set<SymbolId>& ids);
   std::pair<size_t, size_t> loadSymbols(const std::set<SymbolId>& ids, std::map<SymbolId, std::shared_ptr<Symbol>>& outmap);
   SymbolCache& symbolCache();

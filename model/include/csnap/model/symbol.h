@@ -104,6 +104,19 @@ inline bool is_local(const Symbol& s)
   return s.flags & Symbol::Local;
 }
 
+inline bool test_flag(const Symbol& s, Symbol::Flag f)
+{
+  return s.flags & f;
+}
+
+inline void set_flag(Symbol& s, Symbol::Flag f, bool on = true)
+{
+  if (on)
+    s.flags |= f;
+  else
+    s.flags &= ~((int)f);
+}
+
 inline AccessSpecifier get_access_specifier(const Symbol& s)
 {
   switch (s.flags & Symbol::Private)
