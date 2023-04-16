@@ -9,6 +9,9 @@
 namespace csnap
 {
 
+/**
+ * \brief virtual destructor
+ */
 PathResolver::~PathResolver()
 {
 
@@ -46,7 +49,14 @@ std::string PathResolver::relpath(const std::string& source, const std::string& 
   return r;
 }
 
-
+/**
+ * \brief returns a url for a given file
+ * \param f  a reference to the file
+ * 
+ * The default implementation simply returns the path of the file.
+ * Subclasses should override this function to return a suitable path
+ * (e.g., the url of an HTML page associated with \a f).
+ */
 std::filesystem::path PathResolver::filePath(const File& f) const
 {
   return f.path;

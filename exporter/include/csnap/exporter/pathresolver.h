@@ -12,6 +12,9 @@
 namespace csnap
 {
 
+/**
+ * \brief helper class that produces page url for files saved in a snapshot
+ */
 class PathResolver
 {
 public:

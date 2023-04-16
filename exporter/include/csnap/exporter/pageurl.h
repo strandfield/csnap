@@ -9,6 +9,9 @@
 
 #include <filesystem>
 
+/**
+ * \brief helper class for representing url of html pages
+ */
 class PageURL
 {
 private:
@@ -30,12 +33,25 @@ public:
   PageURL& operator=(PageURL&&) = default;
 };
 
+/**
+ * \brief constructs a page url
+ * \param p  the path
+ */
 inline PageURL::PageURL(std::filesystem::path p) :
   m_path(std::move(p))
 {
 
 }
 
+/**
+ * \brief returns a relative path to the root
+ * 
+ * Example: 
+ * \code{.cpp}
+ *   PageURL("mypage.html").pathToRoot() == "";
+ *   PageURL("folder/nested/mypage.html").pathToRoot() == "../../";
+ * \endcode
+ */
 inline std::string PageURL::pathToRoot() const
 {
   std::string p = path().generic_string();
@@ -52,6 +68,9 @@ inline std::string PageURL::pathToRoot() const
   return r;
 }
 
+/**
+ * \brief returns the path of the page
+ */
 inline const std::filesystem::path& PageURL::path() const
 {
   return m_path;
@@ -62,6 +81,10 @@ inline void PageURL::setPath(const std::filesystem::path& fp)
   m_path = fp;
 }
 
+/**
+ * \brief computes a relative link to another page
+ * \param other  the path to the other page
+ */
 inline std::string PageURL::linkTo(const std::filesystem::path& other) const
 {
   std::filesystem::path current_dir = path().parent_path();

@@ -13,6 +13,9 @@
 namespace csnap
 {
 
+/**
+ * \brief helper class for creating links between html pages
+ */
 class FilePageLinker
 {
 protected:

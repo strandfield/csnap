@@ -12,6 +12,16 @@
 namespace csnap
 {
 
+/**
+ * \brief writes a file on disk
+ * \param p        the path on disk
+ * \param content  the binary content of the file
+ * 
+ * If the file already exists, it is overwritten.
+ * 
+ * This function creates missing directories if \a p points 
+ to a file in a directory that does not yet exist.
+ */
 inline void write_file(const std::filesystem::path& p, const std::string& content)
 {
   std::filesystem::path dir = std::filesystem::absolute(p).parent_path();

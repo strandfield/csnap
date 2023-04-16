@@ -114,6 +114,13 @@ public:
   }
 };
 
+/**
+ * \brief constructs a snapshot exporter on a given snapshot
+ * \param s  the snapshot
+ * 
+ * By default, the \a outputdir in which the html files are written is 
+ * the current working dir.
+ */
 SnapshotExporter::SnapshotExporter(Snapshot& s) :
   snapshot(s),
   outputdir(std::filesystem::current_path())
@@ -121,6 +128,9 @@ SnapshotExporter::SnapshotExporter(Snapshot& s) :
 
 }
 
+/**
+ * \brief runs the exporting process
+ */
 void SnapshotExporter::run()
 {
   export_resources_html_assets(outputdir);

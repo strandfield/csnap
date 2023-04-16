@@ -10,6 +10,15 @@
 #include <string_view>
 #include <vector>
 
+/**
+ * \brief helper class to write xml files
+ * 
+ * This class provides a friendly interface to write XML files.
+ * 
+ * \note This class does not enforce compliance with any XML standard.
+ * In particular, this class does not ensure that the resulting XML document 
+ * has a single root element.
+ */
 class XmlWriter
 {
 public:

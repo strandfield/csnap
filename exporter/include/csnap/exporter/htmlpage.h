@@ -10,6 +10,9 @@
 
 #include <filesystem>
 
+/**
+ * \brief helper class to write html files
+ */
 class HtmlPage
 {
 private:
@@ -19,9 +22,11 @@ public:
   XmlWriter& xml;
 
 public:
+  HtmlPage() = delete;
+  HtmlPage(const HtmlPage&) = delete;
+  ~HtmlPage() = default;
 
   HtmlPage(PageURL purl, XmlWriter& xmlwriter);
-  HtmlPage(const HtmlPage&) = delete;
 
   csnap::FilePageLinker& links();
   const csnap::FilePageLinker& links() const;
