@@ -38,12 +38,33 @@ bool save_ast(std::vector<std::string>& args)
   return read_optional_flag(args, { "--save-ast" });
 }
 
+int threads(std::vector<std::string>& args)
+{
+  std::string num = read_arg(args, { "--threads" });
+  return std::stoi(num);
+}
+
+template<typename F>
+bool do_try(F&& func)
+{
+  try
+  {
+    func();
+    return true;
+  }
+  catch (...)
+  {
+    return false;
+  }
+}
+
 void scan(std::vector<std::string> args)
 {
   using namespace csnap;
 
   Scanner scanner;
   scanner.save_ast = save_ast(args);
+  do_try([&scanner, &args]() { scanner.nb_parsing_threads = threads(args); });
 
   std::filesystem::path dbpath = output(args);
   std::filesystem::path slnpath = input(args);

@@ -80,6 +80,16 @@ Parser::~Parser()
 }
 
 /**
+ * \brief sets the number of threads used for parsing
+ * \param n  the number of threads
+ */
+void Parser::setThreadCount(size_t n)
+{
+  n = std::clamp(n, size_t(1), (size_t)std::thread::hardware_concurrency());
+  m_threads.setThreadCount(n);
+}
+
+/**
  * \brief parse a translation unit asynchronously
  * 
  * The source file associated with @a tu must be in the FileList passed

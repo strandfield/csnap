@@ -39,6 +39,8 @@ public:
   Parser(libclang::Index& index, const FileList& flist);
   ~Parser();
 
+  void setThreadCount(size_t n);
+
   void asyncParse(TranslationUnit* tu);
 
   bool done() const;

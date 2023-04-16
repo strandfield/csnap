@@ -12,10 +12,14 @@
 namespace csnap
 {
 
+/**
+ * \brief top level class for creating a snapshot 
+ */
 class Scanner
 {
 public:
   bool save_ast = false;
+  int nb_parsing_threads = 1;
 
 public:
 

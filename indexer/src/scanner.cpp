@@ -50,11 +50,21 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
   snapshot.writePendingData();
 }
 
+/**
+ * \brief creates an empty snapshot
+ * \param p  the path of the database
+ */
 void Scanner::initSnapshot(std::filesystem::path& p)
 {
   m_snapshot = std::make_unique<Snapshot>(Snapshot::create(p));
 }
 
+/**
+ * \brief fills the snapshot by scanning a Visual Studio solution
+ * \param slnPath  path to the sln file
+ * 
+ * \warning initSnapshot() must be called before calling this function.
+ */
 void Scanner::scanSln(const std::filesystem::path& slnPath)
 {
   openSln(slnPath, *m_snapshot);
@@ -65,6 +75,7 @@ void Scanner::scanSln(const std::filesystem::path& slnPath)
   libclang::Index index = clang.createIndex();
 
   Parser parser{ index, m_snapshot->files() };
+  parser.setThreadCount(this->nb_parsing_threads);
 
   for (TranslationUnit* tu : m_snapshot->translationUnits().all())
   {
