@@ -185,7 +185,62 @@ void SymbolPageGenerator::writeSummary()
     }
   }
 
+  if (symbol.kind == Whatsit::CXXClass || symbol.kind == Whatsit::Struct)
+  {
+    writeBases();
+  }
+
   page.write("<p><b>Usr:</b> " + symbol.usr + "</p>\n");
+}
+
+void SymbolPageGenerator::writeBases()
+{
+  std::vector<BaseClass> bases = snapshot.listBaseClasses(symbol.id);
+
+  if (bases.empty())
+    return;
+
+  html::p(page);
+  {
+    page << "Bases: ";
+
+    for (size_t i(0); i < bases.size(); ++i)
+    {
+      const BaseClass& base = bases.at(i);
+      std::shared_ptr<Symbol> basesymbol = snapshot.getSymbol(base.base_id);
+
+      if (!basesymbol)
+        continue;
+
+      html::a(page);
+
+      switch (base.access_specifier)
+      {
+      case AccessSpecifier::Public:
+        html::attr(page, "class", "public-base");
+        break;
+      case AccessSpecifier::Protected:
+        html::attr(page, "class", "protected-base");
+        break;
+      case AccessSpecifier::Private:
+        html::attr(page, "class", "private-base");
+        break;
+      default:
+        break;
+      }
+
+      html::attr(page, "href", SourceHighlighter::symbol_symref(*basesymbol) + ".html");
+
+      page << basesymbol->name;
+      html::enda(page);
+
+      if (i != bases.size() - 1)
+        page << ", ";
+      else
+        page << ".";
+    }
+  }
+  html::endp(page);
 }
 
 void SymbolPageGenerator::writeDecls(const std::vector<SymbolReference>& list)

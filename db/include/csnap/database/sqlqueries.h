@@ -38,6 +38,7 @@ std::string select_info(Database& db, const std::string& key);
 std::vector<SymbolReference> select_from_symbolreference(Database& db, SymbolId symbol);
 std::vector<SymbolReference> select_symbolreference(Database& db, FileId file);
 std::vector<SymbolReference> select_symboldefinition(Database& db);
+std::vector<BaseClass> select_from_base(Database& db, SymbolId symbol_id);
 
 void insert_file(Database& db, const File& file);
 void insert_file_content(Database& db, const std::vector<File*>& files);

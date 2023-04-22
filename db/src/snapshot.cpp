@@ -508,6 +508,18 @@ void Snapshot::addBases(SymbolId symid, const std::vector<BaseClass>& bases)
   }
 }
 
+/**
+ * \brief returns the base classes of a symbol
+ * \param symid  the id of the symbol
+ * 
+ * You may call this function with an id that does not represent a C++ class
+ * (or with an invalid id); in such case, an empty vector is returned. 
+ */
+std::vector<BaseClass> Snapshot::listBaseClasses(SymbolId symid) const
+{
+  return select_from_base(*m_database, symid);
+}
+
 bool Snapshot::hasPendingData() const
 {
   return m_pending_data != nullptr;

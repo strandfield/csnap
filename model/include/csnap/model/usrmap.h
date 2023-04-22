@@ -15,6 +15,12 @@
 namespace csnap
 {
 
+/**
+ * \brief maps clang USR to symbol identifier
+ * 
+ * libclang uses USRs (Unified Symbol Resolution) to match symbols across translation units.
+ * This class is used to assign a SymbolId to a USR.
+ */
 class UsrMap
 {
 public:
@@ -27,6 +33,9 @@ private:
   std::map<std::string, SymbolId> m_map;
 };
 
+/**
+ * \brief a thread-safe UsrMap
+ */
 class GlobalUsrMap
 {
 public:

@@ -287,6 +287,24 @@ std::vector<SymbolReference> select_symboldefinition(Database& db)
   return r;
 }
 
+/**
+ * \brief select all rows from the base table with a specified value for the symbol_id column
+ * \param db         the database
+ * \param symbol_id  desired value for the symbol_id column
+ */
+std::vector<BaseClass> select_from_base(Database& db, SymbolId symbol_id)
+{
+  sql::Statement stmt{ db, "SELECT base_id, access_specifier FROM base WHERE symbol_id = ?" };
+  stmt.bind(1, symbol_id.value());
+
+  return read_vector<BaseClass>(stmt, [](sql::Statement& q) {
+    BaseClass base;
+    base.base_id = SymbolId(q.columnInt(0));
+    base.access_specifier = static_cast<AccessSpecifier>(q.columnInt(1));
+    return base;
+    });
+}
+
 void insert_file(Database& db, const File& file)
 {
   sql::Statement stmt{ db, "INSERT INTO file(id, path) VALUES(?,?)" };
