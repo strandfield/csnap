@@ -188,6 +188,7 @@ void SymbolPageGenerator::writeSummary()
   if (symbol.kind == Whatsit::CXXClass || symbol.kind == Whatsit::Struct)
   {
     writeBases();
+    writeDerivedClasses();
   }
 
   page.write("<p><b>Usr:</b> " + symbol.usr + "</p>\n");
@@ -238,6 +239,37 @@ void SymbolPageGenerator::writeBases()
         page << ", ";
       else
         page << ".";
+    }
+  }
+  html::endp(page);
+}
+
+void SymbolPageGenerator::writeDerivedClasses()
+{
+  std::vector<SymbolId> derived_classes = snapshot.listDerivedClasses(symbol.id);
+
+  if (derived_classes.empty())
+    return;
+
+  html::p(page);
+  {
+    page << "Known derived classes: ";
+
+    for (size_t i(0); i < derived_classes.size(); ++i)
+    {
+      std::shared_ptr<Symbol> basesymbol = snapshot.getSymbol(derived_classes.at(i));
+
+      if (!basesymbol)
+        continue;
+
+      html::a(page);
+
+      html::attr(page, "href", SourceHighlighter::symbol_symref(*basesymbol) + ".html");
+
+      page << basesymbol->name;
+      html::enda(page);
+
+      page << ((i != derived_classes.size() - 1) ? ", " : ".");
     }
   }
   html::endp(page);

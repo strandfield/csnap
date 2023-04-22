@@ -305,6 +305,21 @@ std::vector<BaseClass> select_from_base(Database& db, SymbolId symbol_id)
     });
 }
 
+/**
+ * \brief select the symbol_id column from the base table with a specified value for the base_id column
+ * \param db       the database
+ * \param base_id  desired value for the base_id column
+ */
+std::vector<SymbolId> select_symbold_id_from_base(Database& db, SymbolId base_id)
+{
+  sql::Statement stmt{ db, "SELECT symbol_id FROM base WHERE base_id = ?" };
+  stmt.bind(1, base_id.value());
+
+  return read_vector<SymbolId>(stmt, [](sql::Statement& q) {
+    return SymbolId(q.columnInt(0));
+    });
+}
+
 void insert_file(Database& db, const File& file)
 {
   sql::Statement stmt{ db, "INSERT INTO file(id, path) VALUES(?,?)" };

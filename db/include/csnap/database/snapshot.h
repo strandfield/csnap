@@ -79,6 +79,7 @@ public:
 
   void addBases(SymbolId symid, const std::vector<BaseClass>& bases);
   std::vector<BaseClass> listBaseClasses(SymbolId symid) const;
+  std::vector<SymbolId> listDerivedClasses(SymbolId symid) const;
 
   void addSymbolReferences(const std::vector<SymbolReference>& list);
   std::vector<SymbolReference> listReferences(SymbolId symbol);

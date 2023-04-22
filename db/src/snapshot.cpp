@@ -520,6 +520,17 @@ std::vector<BaseClass> Snapshot::listBaseClasses(SymbolId symid) const
   return select_from_base(*m_database, symid);
 }
 
+/**
+ * \brief returns known derived classes of a symbol
+ * \param symid  the id of the symbol
+ * 
+ * \sa listBaseClasses().
+ */
+std::vector<SymbolId> Snapshot::listDerivedClasses(SymbolId symid) const
+{
+  return select_symbold_id_from_base(*m_database, symid);
+}
+
 bool Snapshot::hasPendingData() const
 {
   return m_pending_data != nullptr;
