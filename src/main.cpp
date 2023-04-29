@@ -1,10 +1,18 @@
 
+#include "csnap/model/version.h"
+
 #include <iostream>
 #include <string>
 #include <vector>
 
 extern void scan(std::vector<std::string> args);
 extern void export_(std::vector<std::string> args);
+
+[[noreturn]] void version()
+{
+  std::cout << csnap::versionstring() << std::endl;
+  std::exit(0);
+}
 
 [[noreturn]] void help()
 {
@@ -21,8 +29,10 @@ int main(int argc, char* argv[])
 {
   auto args = std::vector<std::string>(argv, argv + argc);
 
-  if (args.size() < 2)
+  if (args.size() < 2 || args.at(1) == "--help" || args.at(1) == "-h")
     help();
+  else if (args.at(1) == "--version" || args.at(1) == "-v")
+    version();
 
   if (args.at(1) == "scan")
   {

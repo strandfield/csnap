@@ -9,6 +9,8 @@
 #include "parser.h"
 #include "sln.h"
 
+#include "csnap/model/version.h"
+
 namespace csnap
 {
 
@@ -57,6 +59,8 @@ void process_indexing_result(IndexingResult& idxres, IndexingResultAggregator& a
 void Scanner::initSnapshot(std::filesystem::path& p)
 {
   m_snapshot = std::make_unique<Snapshot>(Snapshot::create(p));
+
+  m_snapshot->setProperty("csnap.version", csnap::versionstring());
 }
 
 /**
