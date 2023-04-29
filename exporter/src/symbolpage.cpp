@@ -67,9 +67,9 @@ void SymbolPageGenerator::writePage()
         { "type", "text/css" },
         { "href", page.url().pathToRoot() + "symbolpage.css" }
         });
-      html::endelement(page);
+      html::endlink(page);
     }
-    html::endlink(page);
+    html::endhead(page);
 
     html::body(page);
     {

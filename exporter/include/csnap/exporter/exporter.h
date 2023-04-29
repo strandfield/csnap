@@ -8,6 +8,7 @@
 #include "csnap/database/snapshot.h"
 
 #include <filesystem>
+#include <map>
 
 namespace csnap
 {
@@ -36,6 +37,8 @@ public:
   void run();
 
 protected:
+  std::map<File*, std::filesystem::path> writeFilePages();
+  void writeDirectoryPages(const std::map<File*, std::filesystem::path>& paths);
   void writeSymbolPages();
 };
 

@@ -4,6 +4,7 @@
 
 #include "exporter.h"
 
+#include "directorypage.h"
 #include "filebrowser.h"
 #include "symbolpage.h"
 #include "writefile.h"
@@ -70,6 +71,47 @@ void export_html(Snapshot& snapshot, File& file, const std::filesystem::path& ou
   write_file(outputdir / outputpath, outstrstream.str());
 }
 
+static std::set<std::filesystem::path> list_directories(const std::map<File*, std::filesystem::path>& paths)
+{
+  std::set<std::filesystem::path> result;
+
+  for (const auto& p : paths)
+  {
+    std::filesystem::path parent_path = p.second.parent_path();
+
+    if (parent_path != std::filesystem::path())
+      result.insert(parent_path);
+  }
+
+  return result;
+}
+
+static std::set<std::filesystem::path> list_directories_recursive(const std::map<File*, std::filesystem::path>& paths)
+{
+  std::set<std::filesystem::path> result = list_directories(paths);
+
+  for (auto it = result.begin(); it != result.end(); )
+  {
+    std::filesystem::path parent_path = it->parent_path();
+
+    if (parent_path != std::filesystem::path())
+    {
+      auto [newit, inserted] = result.insert(parent_path);
+
+      if (inserted)
+        it = newit;
+      else
+        ++it;
+    }
+    else
+    {
+      ++it;
+    }
+  }
+
+  return result;
+}
+
 static void export_symbol(Snapshot& snapshot, const Symbol& symbol, const std::filesystem::path& outputdir, const std::filesystem::path& outputpath, PathResolver& pathresolver)
 {
   std::stringstream outstrstream;
@@ -103,7 +145,7 @@ public:
 
     if (!rootdir.empty() && file.path.find(rootdir) == 0)
     {
-      std::string path = file.path.substr(rootdir.size());
+      std::string path = file.path.substr(rootdir.size() + 1);
       return std::filesystem::path(path + extension);
     }
     else
@@ -135,6 +177,15 @@ void SnapshotExporter::run()
 {
   export_resources_html_assets(outputdir);
 
+  std::map<File*, std::filesystem::path> paths = writeFilePages();
+
+  writeDirectoryPages(paths);
+
+  writeSymbolPages();
+}
+
+std::map<File*, std::filesystem::path> SnapshotExporter::writeFilePages()
+{
   DefinitionTable defs;
   defs.build(select_symboldefinition(snapshot.database()));
 
@@ -142,14 +193,39 @@ void SnapshotExporter::run()
 
   std::vector<File*> files = snapshot.files().all();
 
-  for(size_t i(0); i < files.size(); ++i)
+  std::map<File*, std::filesystem::path> result;
+  
+  for (size_t i(0); i < files.size(); ++i)
   {
     File* f = files.at(i);
-    std::cout << "[" << (i+1) << "/" << files.size() << "] " << f->path << std::endl;
-    export_html(snapshot, *f, outputdir, pathresolver.filePath(*f), defs, pathresolver);
+    std::cout << "[" << (i + 1) << "/" << files.size() << "] " << f->path << std::endl;
+    std::filesystem::path savepath = pathresolver.filePath(*f);
+    result[f] = savepath;
+    export_html(snapshot, *f, outputdir, savepath, defs, pathresolver);
   }
 
-  writeSymbolPages();
+  return result;
+}
+
+void SnapshotExporter::writeDirectoryPages(const std::map<File*, std::filesystem::path>& paths)
+{
+  std::set<std::filesystem::path> directories = list_directories_recursive(paths);
+
+  // $note: ugly hack to get a homepage
+  directories.insert(std::filesystem::path());
+
+  for (const std::filesystem::path& dirpath : directories)
+  {
+    std::stringstream outstrstream;
+    XmlWriter xml{ outstrstream };
+
+    HtmlPage page{ dirpath / "index.html", xml };
+   
+    DirectoryPageGenerator gen{ page, paths, dirpath };
+    gen.writePage();
+
+    write_file(outputdir / page.url().path(), outstrstream.str());
+  }
 }
 
 void SnapshotExporter::writeSymbolPages()

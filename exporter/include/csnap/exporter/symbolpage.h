@@ -13,8 +13,6 @@
 namespace csnap
 {
 
-class Snapshot;
-
 class SymbolPageGenerator
 {
 public:
