@@ -1,0 +1,25 @@
+
+image: Visual Studio 2019
+
+clone_depth: 3
+
+platform:
+  - x64
+
+configuration:
+  - Release
+  
+matrix:
+  fast_finish: false
+
+init:
+  - cmd: cmake --version
+
+before_build:
+  - mkdir build
+  - cd build
+  - cmake ..
+
+build_script:
+  - cmake --build . --config Release -- %MSBUILD_ARGS%
+    
