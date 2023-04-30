@@ -1,0 +1,46 @@
+
+language: cpp
+
+before_script:
+  - mkdir build
+  - cd build
+  - echo Building tinyxml2
+  - git clone https://github.com/leethomason/tinyxml2.git
+  - cd tinyxml2 
+  - mkdir build
+  - cd build
+  - cmake -Dtinyxml2_SHARED_LIBS:BOOL=ON ..
+  - make
+  - sudo cmake --install .
+  - cd ../..
+
+matrix:
+  include:
+  - os: linux
+    dist: focal
+    name: Clang 9.0
+    compiler: clang
+    env:
+      - CC=clang-9
+      - CXX=clang++-9
+    script:
+      - sudo apt-get -y install clang-9 libc++-9-dev libc++abi-9-dev 
+      - cmake ..
+      - make
+  - os: linux
+    dist: bionic
+    name: GCC 8
+    env:
+      - CC=gcc-8
+      - CXX=g++-8
+    compiler: gcc-8
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - gcc-8
+          - g++-8
+    script:
+      - cmake ..
+      - make
