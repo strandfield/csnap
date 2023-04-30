@@ -7,6 +7,7 @@
 
 #include "xmlwriter.h"
 
+#include <algorithm>
 #include <filesystem>
 
 /**

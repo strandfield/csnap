@@ -4,6 +4,8 @@
 
 #include "threadpool.h"
 
+#include <algorithm>
+
 namespace csnap
 {
 

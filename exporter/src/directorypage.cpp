@@ -5,6 +5,7 @@
 #include "directorypage.h"
 
 #include <algorithm>
+#include <cstring>
 #include <set>
 #include <utility>
 #include <vector>

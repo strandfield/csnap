@@ -6,6 +6,7 @@
 
 #include "csnap/model/file.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 

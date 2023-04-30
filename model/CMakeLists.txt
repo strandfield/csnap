@@ -10,7 +10,7 @@ set_target_properties(csnap-model PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_B
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     message("GCC compiler: linking to stdc++fs")
-    target_link_libraries(csnap stdc++fs)
+    target_link_libraries(csnap-model stdc++fs)
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

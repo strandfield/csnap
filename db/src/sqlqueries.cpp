@@ -13,6 +13,7 @@
 #include "csnap/model/symbol.h"
 #include "csnap/model/translationunit.h"
 
+#include <algorithm>
 #include <numeric>
 
 namespace csnap

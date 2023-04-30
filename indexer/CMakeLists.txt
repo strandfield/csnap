@@ -7,12 +7,15 @@ if(NOT TARGET vcxproj)
     add_subdirectory(vcxproj)
 endif()
 
+find_package (Threads)
+
 file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE HDR_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/**.h)
 
 add_library(csnap-indexer STATIC ${SRC_FILES} ${HDR_FILES})
 target_include_directories(csnap-indexer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(csnap-indexer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/csnap/indexer")
+target_link_libraries(csnap-indexer ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(csnap-indexer vcxproj libclang-utils)
 target_link_libraries(csnap-indexer csnap-model csnap-database)
 
