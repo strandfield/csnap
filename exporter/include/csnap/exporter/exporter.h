@@ -31,12 +31,27 @@ public:
    */
   std::filesystem::path outputdir;
 
+  /**
+   * \brief root path for the input files
+   * 
+   * Within a snapshot, files have their complete filepath saved.
+   * However, while exporting, it is often desirable to start at the level 
+   * of the project's folder.
+   * The \a rootpath variable can be used to specify that folder.
+   * 
+   * By default, this member contains a special character string that 
+   * will make the exporter attempt to detect automatically a reasonable 
+   * rootpath.
+   */
+  std::string rootpath;
+
 public:
   explicit SnapshotExporter(Snapshot& s);
 
   void run();
 
 protected:
+  void detectRootPath();
   std::map<File*, std::filesystem::path> writeFilePages();
   void writeDirectoryPages(const std::map<File*, std::filesystem::path>& paths);
   void writeSymbolPages();

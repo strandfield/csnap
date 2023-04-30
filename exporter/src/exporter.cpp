@@ -165,7 +165,8 @@ public:
  */
 SnapshotExporter::SnapshotExporter(Snapshot& s) :
   snapshot(s),
-  outputdir(std::filesystem::current_path())
+  outputdir(std::filesystem::current_path()),
+  rootpath("%auto%")
 {
 
 }
@@ -175,6 +176,9 @@ SnapshotExporter::SnapshotExporter(Snapshot& s) :
  */
 void SnapshotExporter::run()
 {
+  if (rootpath == "%auto%")
+    detectRootPath();
+
   export_resources_html_assets(outputdir);
 
   std::map<File*, std::filesystem::path> paths = writeFilePages();
@@ -184,12 +188,47 @@ void SnapshotExporter::run()
   writeSymbolPages();
 }
 
+void SnapshotExporter::detectRootPath()
+{
+  std::vector<File*> files = snapshot.files().all();
+
+  if (files.empty())
+    return;
+
+  rootpath = files.front()->path;
+
+  auto common_substr_len = [](const std::string& a, const std::string& b) -> size_t {
+    size_t n = std::min(a.size(), b.size());
+    size_t i = 0;
+    while (i < n && a.at(i) == b.at(i)) ++i;
+    return i;
+  };
+
+  for (File* f : files)
+  {
+    size_t n = common_substr_len(rootpath, f->path);
+    rootpath.erase(rootpath.begin() + n, rootpath.end());
+  }
+
+  if (!rootpath.empty())
+  {
+    rootpath.pop_back();
+
+    if (rootpath.size() == 2 && rootpath.back() == ':')
+      rootpath = "";
+
+    rootpath = std::filesystem::path(rootpath).parent_path().generic_string();
+  }
+
+  std::cout << "exporter root path detected: " << rootpath << std::endl;
+}
+
 std::map<File*, std::filesystem::path> SnapshotExporter::writeFilePages()
 {
   DefinitionTable defs;
   defs.build(select_symboldefinition(snapshot.database()));
 
-  SnapshotExporterHtmlPathResolver pathresolver;
+  SnapshotExporterHtmlPathResolver pathresolver{ rootpath };
 
   std::vector<File*> files = snapshot.files().all();
 
@@ -209,6 +248,8 @@ std::map<File*, std::filesystem::path> SnapshotExporter::writeFilePages()
 
 void SnapshotExporter::writeDirectoryPages(const std::map<File*, std::filesystem::path>& paths)
 {
+  std::cout << "Directory pages:" << std::endl;
+
   std::set<std::filesystem::path> directories = list_directories_recursive(paths);
 
   // $note: ugly hack to get a homepage
@@ -216,6 +257,8 @@ void SnapshotExporter::writeDirectoryPages(const std::map<File*, std::filesystem
 
   for (const std::filesystem::path& dirpath : directories)
   {
+    std::cout << dirpath.generic_string() << std::endl;
+
     std::stringstream outstrstream;
     XmlWriter xml{ outstrstream };
 
@@ -238,7 +281,7 @@ void SnapshotExporter::writeSymbolPages()
    
     std::cout << symbol.display_name << std::endl;
 
-    SnapshotExporterHtmlPathResolver pathresolver;
+    SnapshotExporterHtmlPathResolver pathresolver{ rootpath };
     std::string outputpath = "symbols/" + SourceHighlighter::symbol_symref(symbol) + ".html";
     export_symbol(snapshot, symbol, outputdir, outputpath, pathresolver);
   }
