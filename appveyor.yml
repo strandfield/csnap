@@ -19,6 +19,15 @@ before_build:
   - git submodule update --init --recursive
   - mkdir build
   - cd build
+  - echo Building tinyxml2
+  - git clone https://github.com/leethomason/tinyxml2.git
+  - cd tinyxml2 
+  - mkdir build
+  - cd build
+  - cmake -Dtinyxml2_SHARED_LIBS:BOOL=ON -DCMAKE_INSTALL_PREFIX=../../usr ..
+  - cmake --build . --config Release --target ALL_BUILD
+  - cmake --install .
+  - cd ../..
   - cmake ..
 
 build_script:
