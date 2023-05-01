@@ -47,3 +47,12 @@ test_script:
   - activate.bat
   - set PATH=%cd%\Release;%PATH%
   - csnap --version
+  - csnap scan --sln csnap.sln --output csnap.db
+  - csnap export --snapshot csnap.db --output htmlexport
+
+artifacts:
+  - path: csnap.db
+    name: csnap.db
+  - path: htmlexport
+    name: HTML export
+    type: zip
