@@ -51,8 +51,8 @@ test_script:
   - csnap export --snapshot csnap.db --output htmlexport
 
 artifacts:
-  - path: csnap.db
+  - path: build/csnap.db
     name: csnap.db
-  - path: htmlexport
+  - path: build/htmlexport
     name: HTML export
     type: zip
