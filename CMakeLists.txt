@@ -17,6 +17,8 @@ set(CSNAP_PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR})
 if(WIN32)
   list(APPEND CMAKE_PREFIX_PATH "C:/usr")
   list(APPEND CMAKE_LIBRARY_PATH "C:/usr/bin")
+  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/build/usr")
+  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/build/usr/bin")
 endif()
 
 ##################################################################
