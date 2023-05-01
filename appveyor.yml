@@ -41,4 +41,18 @@ before_build:
 
 build_script:
   - cmake --build . --config Release -- %MSBUILD_ARGS%
-    
+
+test_script:
+  - dir
+  - activate.bat
+  - set PATH=%cd%\Release;%PATH%
+  - csnap --version
+  - csnap scan --sln csnap.sln --output csnap.db
+  - csnap export --snapshot csnap.db --output htmlexport
+
+artifacts:
+  - path: build/csnap.db
+    name: csnap.db
+  - path: build/htmlexport
+    name: HTML export
+    type: zip
