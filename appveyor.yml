@@ -28,6 +28,15 @@ before_build:
   - cmake --build . --config Release --target ALL_BUILD
   - cmake --install .
   - cd ../..
+  - echo Building sqlite3
+  - git clone https://github.com/strandfield/sqlite-amalgamation.git
+  - cd sqlite-amalgamation
+  - cmd: c:\"Program Files (x86)"\"Microsoft Visual Studio"\2019\Community\VC\Auxiliary\Build\vcvars64.bat
+  - cmd: cl sqlite3.c -DSQLITE_API=__declspec(dllexport) -link -dll -out:sqlite3.dll
+  - cd ..
+  - copy sqlite-amalgamation\sqlite3.dll usr\bin
+  - copy sqlite-amalgamation\sqlite3.lib usr\lib
+  - copy sqlite-amalgamation\sqlite3.h usr\include
   - cmake ..
 
 build_script:
