@@ -9,6 +9,8 @@ Snapshots produced by csnap are saved as a SQLite database, making them easily u
 in other programs.
 csnap can also export a snapshot as HTML so that it can be viewed online.
 
+An HTML-export of csnap source code is browsable @ [strandfield.github.io/browse/csnap/index.html](https://strandfield.github.io/browse/csnap/index.html).
+
 ## Command-line interface (CLI)
 
 **Creating a snapshot**
