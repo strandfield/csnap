@@ -30,21 +30,21 @@ void DefinitionTable::build(std::vector<SymbolReference> defs)
       return a.symbol_id < b.symbol_id;
     });
 
-  int max_symbol_id = m_definitions.back().symbol_id;
+  int max_symbol_id = m_definitions.back().symbol_id.value();
 
   m_table.resize(static_cast<size_t>(max_symbol_id) + 1, std::numeric_limits<size_t>::max());
 
-  int current_symbol_id = m_definitions.front().symbol_id;
+  int current_symbol_id = m_definitions.front().symbol_id.value();
   size_t current_start_offset = 0;
 
   for (size_t i(0); i < m_definitions.size(); ++i)
   {
-    if (m_definitions.at(i).symbol_id != current_symbol_id)
+    if (m_definitions.at(i).symbol_id.value() != current_symbol_id)
     {
       auto symoffset = static_cast<size_t>(current_symbol_id);
       m_table[symoffset] = current_start_offset;
 
-      current_symbol_id = m_definitions.at(i).symbol_id;
+      current_symbol_id = m_definitions.at(i).symbol_id.value();
       current_start_offset = i;
     }
   }
@@ -68,7 +68,7 @@ bool DefinitionTable::hasUniqueDefinition(SymbolId id, SymbolReference* def) con
 
   size_t firstdef = m_table[symoffset];
 
-  if (firstdef + 1 == m_definitions.size() || m_definitions[firstdef + 1].symbol_id != id.value())
+  if (firstdef + 1 == m_definitions.size() || m_definitions[firstdef + 1].symbol_id != id)
   {
     if (def)
       *def = m_definitions[firstdef];

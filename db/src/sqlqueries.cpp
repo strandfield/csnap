@@ -205,7 +205,7 @@ std::vector<SymbolReference> select_from_symbolreference(Database& db, SymbolId 
   return read_vector<SymbolReference>(stmt, [&symbol](sql::Statement& stmt) {
     SymbolReference symref;
     symref.file_id = stmt.columnInt(0);
-    symref.symbol_id = symbol.value();
+    symref.symbol_id = symbol;
     symref.line = stmt.columnInt(1);
     symref.col = stmt.columnInt(2);
 
@@ -236,7 +236,7 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file)
 
   while (stmt.step())
   {
-    symref.symbol_id = stmt.columnInt(0);
+    symref.symbol_id = SymbolId(stmt.columnInt(0));
     symref.line = stmt.columnInt(1);
     symref.col = stmt.columnInt(2);
 
@@ -270,7 +270,7 @@ std::vector<SymbolReference> select_symboldefinition(Database& db)
   while (stmt.step())
   {
     SymbolReference symref;
-    symref.symbol_id = stmt.columnInt(0);
+    symref.symbol_id = SymbolId(stmt.columnInt(0));
     symref.file_id = stmt.columnInt(1);
     symref.line = stmt.columnInt(2);
     symref.col = stmt.columnInt(3);
@@ -563,7 +563,7 @@ void insert_symbol_references(Database& db, const std::vector<SymbolReference>& 
 
   for (const SymbolReference& ref : references)
   {
-    query.bind(1, ref.symbol_id);
+    query.bind(1, ref.symbol_id.value());
     query.bind(2, ref.file_id);
     query.bind(3, ref.line);
     query.bind(4, ref.col);

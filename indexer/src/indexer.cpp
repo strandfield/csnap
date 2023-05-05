@@ -137,7 +137,7 @@ public:
       symref.file_id = fileid.value();
       symref.col = loc.column;
       symref.line = loc.line;
-      symref.symbol_id = symbol->id.value();
+      symref.symbol_id = symbol->id;
 
       symref.flags = decl->isDefinition ? CXSymbolRole_Definition : CXSymbolRole_Declaration;
 
@@ -172,7 +172,7 @@ public:
     symref.file_id = fileid.value();
     symref.col = loc.column;
     symref.line = loc.line;
-    symref.symbol_id = symbol->id.value();
+    symref.symbol_id = symbol->id;
     symref.flags = ref->role;
 
     if (ref->parentEntity)

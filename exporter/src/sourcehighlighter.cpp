@@ -357,8 +357,8 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
 {
   const SymbolReference& symref = *(refit);
 
-  int symbol_id = symref.symbol_id;
-  SymbolPtr symbol = symbols.at(SymbolId(symbol_id));
+  SymbolId symbol_id = symref.symbol_id;
+  SymbolPtr symbol = symbols.at(symbol_id);
   std::string sym_ref = symbol_symref(*symbol);
   const std::string& css_class = cssClass(*symbol);
 
@@ -387,7 +387,7 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
   {
     SymbolReference symdef;
 
-    if (definitions.hasUniqueDefinition(SymbolId(symbol_id), &symdef) && page.links())
+    if (definitions.hasUniqueDefinition(symbol_id, &symdef) && page.links())
     {
       std::string href = page.links().linkTo(*files.get(FileId(symdef.file_id)), symdef.line);
 

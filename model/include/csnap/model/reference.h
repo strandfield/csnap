@@ -18,7 +18,7 @@ struct SymbolReference
   /**
    * \brief the id of the symbol that is referenced
    */
-  int symbol_id;
+  SymbolId symbol_id;
   int file_id;
   int line;
   int col;
