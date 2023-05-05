@@ -261,20 +261,15 @@ std::vector<SymbolReference> select_symbolreference(Database& db, FileId file)
  */
 std::vector<SymbolReference> select_symboldefinition(Database& db)
 {
-  // $TODO: this could be rewritten using read_vector()
-
-  std::vector<SymbolReference> r;
-
   sql::Statement stmt{ db, "SELECT symbol_id, file_id, line, col, flags FROM symboldefinition" };
 
-  while (stmt.step())
-  {
+  return read_vector<SymbolReference>(stmt, [](sql::Statement& q) {
     SymbolReference symref;
-    symref.symbol_id = SymbolId(stmt.columnInt(0));
-    symref.file_id = FileId(stmt.columnInt(1));
-    symref.line = stmt.columnInt(2);
-    symref.col = stmt.columnInt(3);
-    symref.flags = stmt.columnInt(4);
+    symref.symbol_id = SymbolId(q.columnInt(0));
+    symref.file_id = FileId(q.columnInt(1));
+    symref.line = q.columnInt(2);
+    symref.col = q.columnInt(3);
+    symref.flags = q.columnInt(4);
 
     /*
     if (stmt.nullColumn(4))
@@ -282,10 +277,8 @@ std::vector<SymbolReference> select_symboldefinition(Database& db)
     else
       symref.parent_symbol_id = SymbolId(stmt.columnInt(3));
 */
-    r.push_back(symref);
-  }
-
-  return r;
+    return symref;
+    });
 }
 
 /**

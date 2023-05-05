@@ -51,7 +51,7 @@ protected:
   FileSema sema;
   const FileList& files;
   const SymbolMap& symbols;
-  const DefinitionTable& definitions; // $TODO: make optional, only makes sense if we way to link to other pages
+  const DefinitionTable& definitions; // $TODO: make optional, only makes sense if we may to link to other pages
   cpptok::Tokenizer lexer;
   int m_current_line = -1;
   std::unique_ptr<SemaIterators> current_line_sema;
