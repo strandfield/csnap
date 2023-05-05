@@ -5,6 +5,7 @@
 #ifndef CSNAP_REFERENCE_H
 #define CSNAP_REFERENCE_H
 
+#include "fileid.h"
 #include "symbolid.h"
 
 namespace csnap
@@ -19,7 +20,7 @@ struct SymbolReference
    * \brief the id of the symbol that is referenced
    */
   SymbolId symbol_id;
-  int file_id;
+  FileId file_id;
   int line;
   int col;
 

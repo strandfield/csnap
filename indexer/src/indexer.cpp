@@ -134,7 +134,7 @@ public:
       FileId fileid = reinterpret_cast<File*>(loc.client_data)->id;
 
       SymbolReference symref;
-      symref.file_id = fileid.value();
+      symref.file_id = fileid;
       symref.col = loc.column;
       symref.line = loc.line;
       symref.symbol_id = symbol->id;
@@ -169,7 +169,7 @@ public:
       return;
 
     SymbolReference symref;
-    symref.file_id = fileid.value();
+    symref.file_id = fileid;
     symref.col = loc.column;
     symref.line = loc.line;
     symref.symbol_id = symbol->id;

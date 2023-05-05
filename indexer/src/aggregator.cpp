@@ -51,7 +51,7 @@ void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
 
   do
   {
-    int current_file_id = begin->file_id;
+    FileId current_file_id = begin->file_id;
     auto is_not_current_file = [&current_file_id](const SymbolReference& r) {
       return r.file_id != current_file_id;
     };
@@ -59,11 +59,11 @@ void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
 
     size_t nb_refs = std::distance(begin, end);
 
-    auto it = m_files_data.find(FileId(current_file_id));
+    auto it = m_files_data.find(current_file_id);
 
     if (it == m_files_data.end())
     {
-      m_files_data[FileId(current_file_id)].num_references = nb_refs;
+      m_files_data[current_file_id].num_references = nb_refs;
     }
     else
     {
@@ -71,7 +71,7 @@ void IndexingResultAggregator::reduce(std::vector<SymbolReference>& references)
       {
         // Mismatch, we need to compare to see the difference.
         // (this branch should be unlikely to happen)
-        std::vector<SymbolReference> refsinfile = snapshot().listReferencesInFile(FileId(current_file_id));
+        std::vector<SymbolReference> refsinfile = snapshot().listReferencesInFile(current_file_id);
 
         auto already_exists = [&refsinfile](const SymbolReference& r) {
           return std::find(refsinfile.begin(), refsinfile.end(), r) != refsinfile.end();

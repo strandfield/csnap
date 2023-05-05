@@ -389,7 +389,7 @@ void SourceHighlighter::writeTokenAnnotated(size_t& col, TokenIterator& tokit, R
 
     if (definitions.hasUniqueDefinition(symbol_id, &symdef) && page.links())
     {
-      std::string href = page.links().linkTo(*files.get(FileId(symdef.file_id)), symdef.line);
+      std::string href = page.links().linkTo(*files.get(symdef.file_id), symdef.line);
 
       {
         page.xml.writeStartElement("a");
