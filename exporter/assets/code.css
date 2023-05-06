@@ -1,0 +1,49 @@
+
+.code {
+  font-family: monospace;
+  border-collapse: collapse;
+  width: 100%;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+table.code {
+  table-layout: fixed;
+  width: 100%
+}
+
+.code th {
+  width: 6.5ex;
+  padding-right: 1ex;
+  background-color: #fcfcfc;
+  text-align: right;
+  color: black;
+  font-weight: normal;
+  -moz-user-select: none;
+  user-select: none;
+  border-right: 4px solid transparent;
+  vertical-align: top;
+}
+
+.code td {
+  padding-left: 1ex;
+  white-space: pre-wrap;
+}
+
+.code .cov th {
+  border-right: 2px solid #3ff43f;
+}
+
+.code .uncov th {
+  border-right: 2px solid #f55;
+}
+
+.code a {
+  text-decoration: none;
+  color: inherit
+}
+
+.code a:hover {
+  text-decoration: none
+}
