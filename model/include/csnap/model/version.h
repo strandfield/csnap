@@ -10,7 +10,7 @@
 #define CSNAP_VERSION_MAJOR 0
 #define CSNAP_VERSION_MINOR 1
 #define CSNAP_VERSION_PATCH 0
-#define CSNAP_VERSION_SUFFIX "dev"
+#define CSNAP_VERSION_SUFFIX ""
 
 namespace csnap
 {
