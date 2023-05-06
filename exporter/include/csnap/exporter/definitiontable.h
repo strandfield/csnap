@@ -8,6 +8,7 @@
 #include "csnap/model/symbolid.h"
 #include "csnap/model/reference.h"
 
+#include <cstddef>
 #include <vector>
 
 namespace csnap
