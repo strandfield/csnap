@@ -24,7 +24,7 @@ jobs:
         cd tinyxml2
         mkdir build
         cd build
-        cmake -Dtinyxml2_SHARED_LIBS:BOOL=OFF ..
+        cmake -Dtinyxml2_SHARED_LIBS:BOOL=ON ..
         cmake --build . --config Release
         sudo cmake --install .
         
